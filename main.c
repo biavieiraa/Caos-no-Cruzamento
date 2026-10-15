@@ -1,9 +1,57 @@
 #include "raylib.h"
 
+#define MAX_CARROS 8
+
+#define CIMA 0
+#define BAIXO 1
+#define ESQUERDA 2
+#define DIREITA 3
+
+typedef struct {
+    float x;
+    float y;
+    int direcao;
+    Color cor;
+} Carro;
+
+void desenharCarros(Carro carros[], int quantidade)
+{
+    for (int i = 0; i < quantidade; i++)
+    {
+        if (carros[i].direcao == CIMA ||
+            carros[i].direcao == BAIXO)
+        {
+            DrawRectangle(
+                (int)carros[i].x,
+                (int)carros[i].y,
+                26, 38,
+                carros[i].cor
+            );
+        }
+        else
+        {
+            DrawRectangle(
+                (int)carros[i].x,
+                (int)carros[i].y,
+                38, 26,
+                carros[i].cor
+            );
+        }
+    }
+}
+
 int main(void)
 {
     const int largura = 1000;
     const int altura = 700;
+    Carro carros[MAX_CARROS] = {
+    {455, 100, CIMA, RED},
+    {515, 520, BAIXO, BLUE},
+    {100, 290, ESQUERDA, PINK},
+    {800, 370, DIREITA, ORANGE}
+};
+
+int quantidadeCarros = 4;
 
     InitWindow(largura, altura, "Caos no Cruzamento");
     SetTargetFPS(60);
@@ -11,9 +59,11 @@ int main(void)
     while (!WindowShouldClose())
     {
         BeginDrawing();
+        // Fundo grama
 
-        // Fundo (Grama)
         ClearBackground((Color){65, 135, 75, 255});
+
+        
 
         // Ruas
         DrawRectangle(0, 270, largura, 160, DARKGRAY);
@@ -57,6 +107,8 @@ int main(void)
         // Textos na tela
         DrawText("CAOS NO CRUZAMENTO", 20, 20, 30, RAYWHITE);
         DrawText("Controle o transito!", 20, 60, 20, RAYWHITE);
+
+desenharCarros(carros, quantidadeCarros);
 
         EndDrawing();
     }
