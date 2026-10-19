@@ -70,6 +70,116 @@ void desenharSemaforos(Semaforo semaforos[], int quantidade)
     }
 }
 
+// Função para atualizar a posição dos veículos e respeitar os semáforos
+void atualizarCarros(Carro carros[], int quantidade, Semaforo semaforos[], int largura, int altura)
+{
+    float velocidade = 3.0f;
+
+    for (int i = 0; i < quantidade; i++)
+    {
+        bool deveParar = false;
+
+        switch (carros[i].direcao)
+        {
+            case CIMA: // Veículo vem de CIMA e move-se para BAIXO
+            {
+                float frenteCarro = carros[i].y + 38;
+                float linhaParada = 225.0f;
+
+                if (semaforos[CIMA].estado == SEMAFORO_VERMELHO)
+                {
+                    if (frenteCarro >= linhaParada && frenteCarro < 260.0f)
+                    {
+                        deveParar = true;
+                    }
+                }
+
+                if (!deveParar)
+                {
+                    carros[i].y += velocidade;
+                    if (carros[i].y > altura + 50)
+                    {
+                        carros[i].y = -50; // Reinicia no topo da tela
+                    }
+                }
+                break;
+            }
+
+            case BAIXO: // Veículo vem de BAIXO e move-se para CIMA
+            {
+                float frenteCarro = carros[i].y;
+                float linhaParada = 445.0f;
+
+                if (semaforos[BAIXO].estado == SEMAFORO_VERMELHO)
+                {
+                    if (frenteCarro <= linhaParada && frenteCarro > 410.0f)
+                    {
+                        deveParar = true;
+                    }
+                }
+
+                if (!deveParar)
+                {
+                    carros[i].y -= velocidade;
+                    if (carros[i].y < -50)
+                    {
+                        carros[i].y = altura + 50; // Reinicia no fundo da tela
+                    }
+                }
+                break;
+            }
+
+            case ESQUERDA: // Veículo vem da ESQUERDA e move-se para a DIREITA
+            {
+                float frenteCarro = carros[i].x + 38;
+                float linhaParada = 375.0f;
+
+                if (semaforos[ESQUERDA].estado == SEMAFORO_VERMELHO)
+                {
+                    if (frenteCarro >= linhaParada && frenteCarro < 410.0f)
+                    {
+                        deveParar = true;
+                    }
+                }
+
+                if (!deveParar)
+                {
+                    carros[i].x += velocidade;
+                    if (carros[i].x > largura + 50)
+                    {
+                        carros[i].x = -50; // Reinicia na esquerda da tela
+                    }
+                }
+                break;
+            }
+
+            case DIREITA: // Veículo vem da DIREITA e move-se para a ESQUERDA
+            {
+                float frenteCarro = carros[i].x;
+                float linhaParada = 595.0f;
+
+                if (semaforos[DIREITA].estado == SEMAFORO_VERMELHO)
+                {
+                    if (frenteCarro <= linhaParada && frenteCarro > 560.0f)
+                    {
+                        deveParar = true;
+                    }
+                }
+
+                if (!deveParar)
+                {
+                    carros[i].x -= velocidade;
+                    if (carros[i].x < -50)
+                    {
+                        carros[i].x = largura + 50; // Reinicia na direita da tela
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
+
 int main(void)
 {
     const int largura = 1000;
@@ -109,6 +219,9 @@ int main(void)
                 }
             }
         }
+
+        // Lógica de movimentação dos veículos
+        atualizarCarros(carros, quantidadeCarros, semaforos, largura, altura);
 
         // --- DESENHO ---
         BeginDrawing();
