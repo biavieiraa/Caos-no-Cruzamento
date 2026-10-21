@@ -1,4 +1,3 @@
-
 #include "raylib.h"
 
 #define MAX_CARROS 8
@@ -11,6 +10,11 @@
 #define ATRAVESSANDO 1
 #define SAINDO 2
 
+// --- CONFIGURAÇÕES DA MATRIZ DO MAPA ---
+#define TAM_CELULA 50
+#define MAPA_LARGURA 20 // 1000px / 50px = 20 colunas
+#define MAPA_ALTURA 14  // 700px / 50px = 14 linhas
+
 typedef struct {
     float x;
     float y;
@@ -19,34 +23,71 @@ typedef struct {
     int estado;
 } Carro;
 
-void desenharCarros(Carro carros[], int quantidade)
+// Matriz do mapa (0 = Livre, 1 = Ocupado por Carro)
+int matrizMapa[MAPA_ALTURA][MAPA_LARGURA];
+
+// Reseta a matriz zerando todas as posições
+void limparMatriz(void)
 {
-    for (int i = 0; i < quantidade; i++)
+    for (int l = 0; l < MAPA_ALTURA; l++)
     {
-        if (carros[i].direcao == CIMA ||
-            carros[i].direcao == BAIXO)
+        for (int c = 0; c < MAPA_LARGURA; c++)
         {
-            DrawRectangle(
-                (int)carros[i].x,
-                (int)carros[i].y,
-                26,
-                38,
-                carros[i].cor
-            );
-        }
-        else
-        {
-            DrawRectangle(
-                (int)carros[i].x,
-                (int)carros[i].y,
-                38,
-                26,
-                carros[i].cor
-            );
+            matrizMapa[l][c] = 0;
         }
     }
 }
 
+// Mapeia a posição (x, y) de cada carro na matriz
+void atualizarMatrizComCarros(Carro carros[], int quantidade)
+{
+    limparMatriz();
+
+    for (int i = 0; i < quantidade; i++)
+    {
+        int col = (int)(carros[i].x / TAM_CELULA);
+        int lin = (int)(carros[i].y / TAM_CELULA);
+
+        if (col >= 0 && col < MAPA_LARGURA && lin >= 0 && lin < MAPA_ALTURA)
+        {
+            matrizMapa[lin][col] = 1;
+        }
+    }
+}
+
+// Desenha a grade visual da matriz no cenário
+void desenharGradeMatriz(bool mostrarGrade)
+{
+    if (!mostrarGrade) return;
+
+    for (int l = 0; l < MAPA_ALTURA; l++)
+    {
+        for (int c = 0; c < MAPA_LARGURA; c++)
+        {
+            DrawRectangleLines(c * TAM_CELULA, l * TAM_CELULA, TAM_CELULA, TAM_CELULA, Fade(GRAY, 0.2f));
+
+            if (matrizMapa[l][c] == 1)
+            {
+                DrawRectangle(c * TAM_CELULA, l * TAM_CELULA, TAM_CELULA, TAM_CELULA, Fade(RED, 0.3f));
+            }
+        }
+    }
+}
+
+void desenharCarros(Carro carros[], int quantidade)
+{
+    for (int i = 0; i < quantidade; i++)
+    {
+        if (carros[i].direcao == CIMA || carros[i].direcao == BAIXO)
+        {
+            DrawRectangle((int)carros[i].x, (int)carros[i].y, 26, 38, carros[i].cor);
+        }
+        else
+        {
+            DrawRectangle((int)carros[i].x, (int)carros[i].y, 38, 26, carros[i].cor);
+        }
+    }
+}
 
 void atualizarCarros(
     Carro carros[],
@@ -60,15 +101,11 @@ void atualizarCarros(
 
     for (int i = 0; i < quantidade; i++)
     {
-        int carroVertical =
-            carros[i].direcao == CIMA ||
-            carros[i].direcao == BAIXO;
-
+        int carroVertical = (carros[i].direcao == CIMA || carros[i].direcao == BAIXO);
         int sinalVerde = (carroVertical == fluxoVerticalVerde);
 
         switch (carros[i].direcao)
         {
-            // Vem de cima e segue para baixo
             case CIMA:
             {
                 float limite = 236.0f;
@@ -85,14 +122,12 @@ void atualizarCarros(
                         carros[i].y = limite - 38;
                 }
 
-                if (carros[i].estado == APROXIMANDO &&
-                    sinalVerde && carros[i].y + 38 >= limite)
+                if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].y + 38 >= limite)
                 {
                     carros[i].estado = ATRAVESSANDO;
                 }
 
-                if (carros[i].estado == ATRAVESSANDO &&
-                    carros[i].y >= 430)
+                if (carros[i].estado == ATRAVESSANDO && carros[i].y >= 430)
                 {
                     carros[i].estado = SAINDO;
                 }
@@ -106,7 +141,6 @@ void atualizarCarros(
                 break;
             }
 
-            // Vem de baixo e segue para cima
             case BAIXO:
             {
                 float limite = 450.0f;
@@ -123,14 +157,12 @@ void atualizarCarros(
                         carros[i].y = limite;
                 }
 
-                if (carros[i].estado == APROXIMANDO &&
-                    sinalVerde && carros[i].y <= limite)
+                if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].y <= limite)
                 {
                     carros[i].estado = ATRAVESSANDO;
                 }
 
-                if (carros[i].estado == ATRAVESSANDO &&
-                    carros[i].y + 38 < 270)
+                if (carros[i].estado == ATRAVESSANDO && carros[i].y + 38 < 270)
                 {
                     carros[i].estado = SAINDO;
                 }
@@ -144,7 +176,6 @@ void atualizarCarros(
                 break;
             }
 
-            // Vem da esquerda e segue para a direita
             case ESQUERDA:
             {
                 float limite = 407.0f;
@@ -161,14 +192,12 @@ void atualizarCarros(
                         carros[i].x = limite - 38;
                 }
 
-                if (carros[i].estado == APROXIMANDO &&
-                    sinalVerde && carros[i].x + 38 >= limite)
+                if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].x + 38 >= limite)
                 {
                     carros[i].estado = ATRAVESSANDO;
                 }
 
-                if (carros[i].estado == ATRAVESSANDO &&
-                    carros[i].x >= 580)
+                if (carros[i].estado == ATRAVESSANDO && carros[i].x >= 580)
                 {
                     carros[i].estado = SAINDO;
                 }
@@ -182,7 +211,6 @@ void atualizarCarros(
                 break;
             }
 
-            // Vem da direita e segue para a esquerda
             case DIREITA:
             {
                 float limite = 590.0f;
@@ -199,14 +227,12 @@ void atualizarCarros(
                         carros[i].x = limite;
                 }
 
-                if (carros[i].estado == APROXIMANDO &&
-                    sinalVerde && carros[i].x <= limite)
+                if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].x <= limite)
                 {
                     carros[i].estado = ATRAVESSANDO;
                 }
 
-                if (carros[i].estado == ATRAVESSANDO &&
-                    carros[i].x + 38 < 420)
+                if (carros[i].estado == ATRAVESSANDO && carros[i].x + 38 < 420)
                 {
                     carros[i].estado = SAINDO;
                 }
@@ -228,32 +254,33 @@ int main(void)
     const int largura = 1000;
     const int altura = 700;
 
-
-Carro carros[MAX_CARROS] = {
-    {455, 100, CIMA, RED, 0},
-    {515, 520, BAIXO, BLUE, 0},
-    {100, 290, ESQUERDA, PINK, 0},
-    {800, 370, DIREITA, ORANGE, 0}
-};
-
+    Carro carros[MAX_CARROS] = {
+        {455, 100, CIMA, RED, 0},
+        {515, 520, BAIXO, BLUE, 0},
+        {100, 290, ESQUERDA, PINK, 0},
+        {800, 370, DIREITA, ORANGE, 0}
+    };
 
     int quantidadeCarros = 4;
-
-    // 1 = fluxo vertical verde 0 = fluxo horizontal verde
     int fluxoVerticalVerde = 1;
+    bool exibirGrade = true;
 
     InitWindow(largura, altura, "Caos no Cruzamento");
     SetTargetFPS(60);
 
     while (!WindowShouldClose())
     {
-        // Alterna os fluxos ao apertar a barra de espaco
         if (IsKeyPressed(KEY_SPACE))
         {
             fluxoVerticalVerde = !fluxoVerticalVerde;
         }
 
-        // Movimenta somente os carros do fluxo liberado
+        // Alterna visualização da grade ao pressionar a tecla G
+        if (IsKeyPressed(KEY_G))
+        {
+            exibirGrade = !exibirGrade;
+        }
+
         atualizarCarros(
             carros,
             quantidadeCarros,
@@ -262,9 +289,11 @@ Carro carros[MAX_CARROS] = {
             fluxoVerticalVerde
         );
 
+        // Atualiza a matriz de ocupação a cada frame
+        atualizarMatrizComCarros(carros, quantidadeCarros);
+
         BeginDrawing();
 
-        // Fundo grama
         ClearBackground((Color){65, 135, 75, 255});
 
         // Ruas
@@ -276,27 +305,12 @@ Carro carros[MAX_CARROS] = {
         DrawRectangle(580, 270, 420, 20, RED);
 
         // Sinalizacao tracejada da ciclovia
-        for (int x = 0; x < 420; x += 30)
-        {
-            DrawRectangle(x, 279, 15, 2, RAYWHITE);
-        }
+        for (int x = 0; x < 420; x += 30) DrawRectangle(x, 279, 15, 2, RAYWHITE);
+        for (int x = 580; x < largura; x += 30) DrawRectangle(x, 279, 15, 2, RAYWHITE);
 
-        for (int x = 580; x < largura; x += 30)
-        {
-            DrawRectangle(x, 279, 15, 2, RAYWHITE);
-        }
-
-        // Faixas centrais da rua horizontal
-        for (int x = 0; x < largura; x += 60)
-        {
-            DrawRectangle(x, 347, 30, 6, YELLOW);
-        }
-
-        // Faixas centrais da rua vertical
-        for (int y = 0; y < altura; y += 60)
-        {
-            DrawRectangle(497, y, 6, 30, YELLOW);
-        }
+        // Faixas centrais
+        for (int x = 0; x < largura; x += 60) DrawRectangle(x, 347, 30, 6, YELLOW);
+        for (int y = 0; y < altura; y += 60) DrawRectangle(497, y, 6, 30, YELLOW);
 
         // Faixas de pedestres
         for (int i = 0; i < 6; i++)
@@ -307,11 +321,14 @@ Carro carros[MAX_CARROS] = {
             DrawRectangle(588, 295 + i * 22, 12, 12, RAYWHITE);
         }
 
+        // Desenha a grade e células ocupadas da matriz
+        desenharGradeMatriz(exibirGrade);
+
         // Titulo e instrucoes
         DrawText("CAOS NO CRUZAMENTO", 20, 20, 30, RAYWHITE);
-        DrawText("Aperte ESPACO para alternar os fluxos", 20, 60, 20, RAYWHITE);
+        DrawText("ESPACO: Alterna fluxo | G: Ligas/Desliga Grade", 20, 60, 20, RAYWHITE);
 
-        // Semaforo: luz superior representa o fluxo vertical
+        // Semaforo
         DrawRectangle(390, 235, 30, 55, BLACK);
 
         if (fluxoVerticalVerde)
@@ -324,6 +341,7 @@ Carro carros[MAX_CARROS] = {
             DrawCircle(405, 250, 8, RED);
             DrawCircle(405, 275, 8, GREEN);
         }
+
         desenharCarros(carros, quantidadeCarros);
 
         EndDrawing();
