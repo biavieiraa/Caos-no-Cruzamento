@@ -72,14 +72,35 @@ void limparMatriz(void)
 void atualizarMatrizComCarros(Carro carros[], int quantidade)
 {
     limparMatriz();
+
     for (int i = 0; i < quantidade; i++)
     {
-        int col = (int)(carros[i].x / TAM_CELULA);
-        int lin = (int)(carros[i].y / TAM_CELULA);
+        int larguraCarro = 38;
+        int alturaCarro = 26;
 
-        if (col >= 0 && col < MAPA_LARGURA && lin >= 0 && lin < MAPA_ALTURA)
+        if (carros[i].direcao == CIMA ||
+            carros[i].direcao == BAIXO)
         {
-            matrizMapa[lin][col] = 1;
+            larguraCarro = 26;
+            alturaCarro = 38;
+        }
+
+        int colInicial = (int)(carros[i].x / TAM_CELULA);
+        int linInicial = (int)(carros[i].y / TAM_CELULA);
+
+        int colFinal = (int)((carros[i].x + larguraCarro - 1) / TAM_CELULA);
+        int linFinal = (int)((carros[i].y + alturaCarro - 1) / TAM_CELULA);
+
+        for (int l = linInicial; l <= linFinal; l++)
+        {
+            for (int c = colInicial; c <= colFinal; c++)
+            {
+                if (l >= 0 && l < MAPA_ALTURA &&
+                    c >= 0 && c < MAPA_LARGURA)
+                {
+                    matrizMapa[l][c] = 1;
+                }
+            }
         }
     }
 }
@@ -140,10 +161,25 @@ void tentarGerarCarro(Carro carros[], int *quantidade, int largura, int altura)
     {
         if (carros[i].direcao == dir)
         {
-            if (dir == CIMA && carros[i].y < 20) return;
-            if (dir == BAIXO && carros[i].y > altura - 60) return;
-            if (dir == ESQUERDA && carros[i].x < 20) return;
-            if (dir == DIREITA && carros[i].x > largura - 60) return;
+        if (dir == CIMA &&
+    carros[i].y >= startY &&
+    carros[i].y < startY + 80)
+    return;
+
+if (dir == BAIXO &&
+    carros[i].y <= startY &&
+    carros[i].y > startY - 80)
+    return;
+
+if (dir == ESQUERDA &&
+    carros[i].x >= startX &&
+    carros[i].x < startX + 80)
+    return;
+
+if (dir == DIREITA &&
+    carros[i].x <= startX &&
+    carros[i].x > startX - 80)
+    return;
         }
     }
 
@@ -171,29 +207,57 @@ void atualizarCarrosEFilas(
         int estadoAnterior = carros[i].estado;
         bool deveParar = false;
 
-        // 1. Verificação de fila: Procura carro à frente na mesma direção
-        for (int j = 0; j < *quantidade; j++)
-        {
-            if (i == j || carros[i].direcao != carros[j].direcao) continue;
+// Verifica a distância disponível até o carro da frente
+float movimentoPermitido = velocidadeBase;
+const float distanciaSeguranca = 12.0f;
 
-            switch (carros[i].direcao)
-            {
-                case CIMA:
-                    if (carros[j].y > carros[i].y && (carros[j].y - carros[i].y) < 45) deveParar = true;
-                    break;
-                case BAIXO:
-                    if (carros[j].y < carros[i].y && (carros[i].y - carros[j].y) < 45) deveParar = true;
-                    break;
-                case ESQUERDA:
-                    if (carros[j].x > carros[i].x && (carros[j].x - carros[i].x) < 45) deveParar = true;
-                    break;
-                case DIREITA:
-                    if (carros[j].x < carros[i].x && (carros[i].x - carros[j].x) < 45) deveParar = true;
-                    break;
-            }
-        }
+for (int j = 0; j < *quantidade; j++)
+{
+    if (i == j || carros[i].direcao != carros[j].direcao)
+        continue;
 
-        // 2. Movimentação baseada no semáforo e na fila
+    float distancia = 0.0f;
+    bool carroNaFrente = false;
+
+    switch (carros[i].direcao)
+    {
+        case CIMA:
+            carroNaFrente = carros[j].y > carros[i].y;
+            distancia = carros[j].y - (carros[i].y + 38);
+            break;
+
+        case BAIXO:
+            carroNaFrente = carros[j].y < carros[i].y;
+            distancia = carros[i].y - (carros[j].y + 38);
+            break;
+
+        case ESQUERDA:
+            carroNaFrente = carros[j].x > carros[i].x;
+            distancia = carros[j].x - (carros[i].x + 38);
+            break;
+
+        case DIREITA:
+            carroNaFrente = carros[j].x < carros[i].x;
+            distancia = carros[i].x - (carros[j].x + 38);
+            break;
+    }
+
+    if (carroNaFrente)
+    {
+        float espacoDisponivel = distancia - distanciaSeguranca;
+
+        if (espacoDisponivel < 0.0f)
+            espacoDisponivel = 0.0f;
+
+        if (espacoDisponivel < movimentoPermitido)
+            movimentoPermitido = espacoDisponivel;
+    }
+}
+
+if (movimentoPermitido <= 0.0f)
+{
+    deveParar = true;
+}
         if (!deveParar)
         {
             switch (carros[i].direcao)
@@ -201,10 +265,10 @@ void atualizarCarrosEFilas(
                 case CIMA:
                 {
                     float limite = 236.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].y += velocidadeBase;
+                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].y += movimentoPermitido;
                     else if (carros[i].y + 38 < limite)
                     {
-                        carros[i].y += velocidadeBase;
+                        carros[i].y += movimentoPermitido;
                         if (carros[i].y + 38 > limite) carros[i].y = limite - 38;
                     }
                     else deveParar = true;
@@ -216,10 +280,10 @@ void atualizarCarrosEFilas(
                 case BAIXO:
                 {
                     float limite = 450.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].y -= velocidadeBase;
+                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].y -= movimentoPermitido;
                     else if (carros[i].y > limite)
                     {
-                        carros[i].y -= velocidadeBase;
+                        carros[i].y -= movimentoPermitido;
                         if (carros[i].y < limite) carros[i].y = limite;
                     }
                     else deveParar = true;
@@ -231,10 +295,10 @@ void atualizarCarrosEFilas(
                 case ESQUERDA:
                 {
                     float limite = 407.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].x += velocidadeBase;
+                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].x += movimentoPermitido;
                     else if (carros[i].x + 38 < limite)
                     {
-                        carros[i].x += velocidadeBase;
+                        carros[i].x += movimentoPermitido;
                         if (carros[i].x + 38 > limite) carros[i].x = limite - 38;
                     }
                     else deveParar = true;
@@ -246,10 +310,10 @@ void atualizarCarrosEFilas(
                 case DIREITA:
                 {
                     float limite = 590.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].x -= velocidadeBase;
+                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].x -= movimentoPermitido;
                     else if (carros[i].x > limite)
                     {
-                        carros[i].x -= velocidadeBase;
+                        carros[i].x -= movimentoPermitido;
                         if (carros[i].x < limite) carros[i].x = limite;
                     }
                     else deveParar = true;
@@ -261,7 +325,7 @@ void atualizarCarrosEFilas(
             }
         }
 
-        carros[i].parado = deveParar;
+  carros[i].parado = deveParar || movimentoPermitido <= 0.0f;
 
         // Contagem de Pontuação ao sair
         if (estadoAnterior == ATRAVESSANDO && carros[i].estado == SAINDO)
@@ -270,7 +334,10 @@ void atualizarCarrosEFilas(
         }
 
         // Remoção do carro quando sai completamente do ecrã
-        if (carros[i].y > altura + 100 || carros[i].y < -100 || carros[i].x > largura + 100 || carros[i].x < -100)
+        if ((carros[i].direcao == CIMA && carros[i].y > altura + 40) ||
+    (carros[i].direcao == BAIXO && carros[i].y < -40) ||
+    (carros[i].direcao == ESQUERDA && carros[i].x > largura + 40) ||
+    (carros[i].direcao == DIREITA && carros[i].x < -40))
         {
             for (int k = i; k < *quantidade - 1; k++)
             {
@@ -312,7 +379,8 @@ void reiniciarJogo(
     float *barraCongestionamento,
     bool *gameOver,
     bool *colapso,
-    bool *fluxoVerticalVerde
+    bool *fluxoVerticalVerde,
+    float *tempoUltimoSpawn
 )
 {
     *quantidade = 0;
@@ -322,6 +390,7 @@ void reiniciarJogo(
     *gameOver = false;
     *colapso = false;
     *fluxoVerticalVerde = true;
+    *tempoUltimoSpawn = 0.0f;
 }
 
 int main(void)
@@ -347,7 +416,7 @@ int main(void)
     InitWindow(largura, altura, "Caos no Cruzamento - Modo Sobrevivência");
     SetTargetFPS(60);
 
-    reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &colapso, &fluxoVerticalVerde);
+    reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &colapso, &fluxoVerticalVerde, &tempoUltimoSpawn);
 
     while (!WindowShouldClose())
     {
@@ -381,8 +450,15 @@ int main(void)
             int carrosParados = 0;
             for (int i = 0; i < quantidadeCarros; i++) if (carros[i].parado) carrosParados++;
 
-            if (carrosParados > 0) barraCongestionamento += (carrosParados * 1.8f) * GetFrameTime();
-            else barraCongestionamento -= 3.0f * GetFrameTime();
+if (carrosParados >= 3)
+{
+    barraCongestionamento +=
+        (carrosParados - 2) * 1.8f * GetFrameTime();
+}
+else
+{
+    barraCongestionamento -= 3.0f * GetFrameTime();
+}
 
             if (barraCongestionamento < 0.0f) barraCongestionamento = 0.0f;
 
@@ -407,7 +483,7 @@ int main(void)
         {
             if (IsKeyPressed(KEY_R))
             {
-                reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &colapso, &fluxoVerticalVerde);
+                reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &colapso, &fluxoVerticalVerde, &tempoUltimoSpawn);
             }
         }
 
