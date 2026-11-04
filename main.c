@@ -55,6 +55,40 @@ void salvarRecorde(int pontos)
             fclose(f);
         }
     }
+
+    typedef struct NoCarro
+{
+    Carro carro;
+    struct NoCarro *proximo;
+} NoCarro;
+
+void adicionarCarro(NoCarro **lista, Carro novoCarro)
+{
+    NoCarro *novo = malloc(sizeof(NoCarro));
+
+    if (novo == NULL)
+    {
+        return;
+    }
+
+    novo->carro = novoCarro;
+    novo->proximo = *lista;
+    *lista = novo;
+}
+
+void liberarCarros(NoCarro **lista)
+{
+    NoCarro *atual = *lista;
+
+    while (atual != NULL)
+    {
+        NoCarro *proximo = atual->proximo;
+        free(atual);
+        atual = proximo;
+    }
+
+    *lista = NULL;
+}
 }
 
 // --- LIMPEZA E MATRIZ ---
