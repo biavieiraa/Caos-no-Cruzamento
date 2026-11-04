@@ -30,33 +30,40 @@ typedef struct {
 
 int matrizMapa[MAPA_ALTURA][MAPA_LARGURA];
 
+
 // --- GESTÃO DE RECORDES (FICHEIROS EM C) ---
 int carregarRecorde(void)
 {
     FILE *f = fopen("recorde.txt", "r");
     int rec = 0;
+
     if (f)
     {
         fscanf(f, "%d", &rec);
         fclose(f);
     }
+
     return rec;
 }
 
 void salvarRecorde(int pontos)
 {
     int recAtual = carregarRecorde();
+
     if (pontos > recAtual)
     {
         FILE *f = fopen("recorde.txt", "w");
+
         if (f)
         {
             fprintf(f, "%d", pontos);
             fclose(f);
         }
     }
+}
 
-    typedef struct NoCarro
+// --- LISTA ENCADEADA DE CARROS ---
+typedef struct NoCarro
 {
     Carro carro;
     struct NoCarro *proximo;
@@ -88,7 +95,6 @@ void liberarCarros(NoCarro **lista)
     }
 
     *lista = NULL;
-}
 }
 
 // --- LIMPEZA E MATRIZ ---
@@ -139,35 +145,166 @@ void atualizarMatrizComCarros(Carro carros[], int quantidade)
     }
 }
 
-void desenharGradeMatriz(bool mostrarGrade)
-{
-    if (!mostrarGrade) return;
-
-    for (int l = 0; l < MAPA_ALTURA; l++)
-    {
-        for (int c = 0; c < MAPA_LARGURA; c++)
-        {
-            DrawRectangleLines(c * TAM_CELULA, l * TAM_CELULA, TAM_CELULA, TAM_CELULA, Fade(GRAY, 0.2f));
-            if (matrizMapa[l][c] == 1)
-            {
-                DrawRectangle(c * TAM_CELULA, l * TAM_CELULA, TAM_CELULA, TAM_CELULA, Fade(RED, 0.3f));
-            }
-        }
-    }
-}
 
 // --- DESENHO DOS CARROS ---
 void desenharCarros(Carro carros[], int quantidade)
 {
     for (int i = 0; i < quantidade; i++)
     {
-        if (carros[i].direcao == CIMA || carros[i].direcao == BAIXO)
+        float x = carros[i].x;
+        float y = carros[i].y;
+
+        Color cor = carros[i].cor;
+        Color sombra = (Color){25, 25, 25, 255};
+        Color vidro = (Color){160, 210, 225, 255};
+        Color pneu = (Color){20, 20, 20, 255};
+        Color detalhe = (Color){230, 230, 230, 255};
+
+        // CARROS NA VERTICAL
+        if (carros[i].direcao == CIMA ||
+            carros[i].direcao == BAIXO)
         {
-            DrawRectangle((int)carros[i].x, (int)carros[i].y, 26, 38, carros[i].cor);
+            // Sombra
+            DrawRectangleRounded(
+                (Rectangle){x + 2, y + 2, 26, 38},
+                0.25f, 6, sombra
+            );
+
+            // Rodas
+            DrawRectangleRounded(
+                (Rectangle){x - 2, y + 5, 5, 10},
+                0.4f, 4, pneu
+            );
+
+            DrawRectangleRounded(
+                (Rectangle){x + 23, y + 5, 5, 10},
+                0.4f, 4, pneu
+            );
+
+            DrawRectangleRounded(
+                (Rectangle){x - 2, y + 24, 5, 10},
+                0.4f, 4, pneu
+            );
+
+            DrawRectangleRounded(
+                (Rectangle){x + 23, y + 24, 5, 10},
+                0.4f, 4, pneu
+            );
+
+            // Carroceria
+            DrawRectangleRounded(
+                (Rectangle){x, y, 26, 38},
+                0.25f, 6, cor
+            );
+
+            // Para-brisa dianteiro
+            DrawRectangleRounded(
+                (Rectangle){x + 4, y + 5, 18, 9},
+                0.2f, 5, vidro
+            );
+
+            // Janela traseira
+            DrawRectangleRounded(
+                (Rectangle){x + 4, y + 24, 18, 8},
+                0.2f, 5, vidro
+            );
+
+            // Separação do teto
+            DrawRectangle(
+                (int)x + 4, (int)y + 17, 18, 2,
+                Fade(BLACK, 0.25f)
+            );
+
+            // Faróis
+            DrawRectangle(
+                (int)x + 3, (int)y + 1, 5, 2, detalhe
+            );
+
+            DrawRectangle(
+                (int)x + 18, (int)y + 1, 5, 2, detalhe
+            );
+
+            // Lanternas traseiras
+            DrawRectangle(
+                (int)x + 3, (int)y + 35, 5, 2, RED
+            );
+
+            DrawRectangle(
+                (int)x + 18, (int)y + 35, 5, 2, RED
+            );
         }
+
+        // CARROS NA HORIZONTAL
         else
         {
-            DrawRectangle((int)carros[i].x, (int)carros[i].y, 38, 26, carros[i].cor);
+            // Sombra
+            DrawRectangleRounded(
+                (Rectangle){x + 2, y + 2, 38, 26},
+                0.25f, 6, sombra
+            );
+
+            // Rodas
+            DrawRectangleRounded(
+                (Rectangle){x + 5, y - 2, 10, 5},
+                0.4f, 4, pneu
+            );
+
+            DrawRectangleRounded(
+                (Rectangle){x + 24, y - 2, 10, 5},
+                0.4f, 4, pneu
+            );
+
+            DrawRectangleRounded(
+                (Rectangle){x + 5, y + 23, 10, 5},
+                0.4f, 4, pneu
+            );
+
+            DrawRectangleRounded(
+                (Rectangle){x + 24, y + 23, 10, 5},
+                0.4f, 4, pneu
+            );
+
+            // Carroceria
+            DrawRectangleRounded(
+                (Rectangle){x, y, 38, 26},
+                0.25f, 6, cor
+            );
+
+            // Para-brisa dianteiro
+            DrawRectangleRounded(
+                (Rectangle){x + 5, y + 4, 9, 18},
+                0.2f, 5, vidro
+            );
+
+            // Janela traseira
+            DrawRectangleRounded(
+                (Rectangle){x + 24, y + 4, 9, 18},
+                0.2f, 5, vidro
+            );
+
+            // Separação do teto
+            DrawRectangle(
+                (int)x + 17, (int)y + 4, 2, 18,
+                Fade(BLACK, 0.25f)
+            );
+
+            // Faróis
+            DrawRectangle(
+                (int)x + 1, (int)y + 3, 2, 5, detalhe
+            );
+
+            DrawRectangle(
+                (int)x + 1, (int)y + 18, 2, 5, detalhe
+            );
+
+            // Lanternas traseiras
+            DrawRectangle(
+                (int)x + 35, (int)y + 3, 2, 5, RED
+            );
+
+            DrawRectangle(
+                (int)x + 35, (int)y + 18, 2, 5, RED
+            );
         }
     }
 }
@@ -437,7 +574,6 @@ int main(void)
     Carro carros[MAX_CARROS];
     int quantidadeCarros = 0;
     bool fluxoVerticalVerde = true;
-    bool exibirGrade = true;
     bool gameOver = false;
     bool colapso = false;
 
@@ -475,7 +611,6 @@ int main(void)
             }
 
             if (IsKeyPressed(KEY_SPACE)) fluxoVerticalVerde = !fluxoVerticalVerde;
-            if (IsKeyPressed(KEY_G)) exibirGrade = !exibirGrade;
 
             atualizarCarrosEFilas(carros, &quantidadeCarros, largura, altura, fluxoVerticalVerde, multiplicadorVelocidade, &pontos);
             atualizarMatrizComCarros(carros, quantidadeCarros);
@@ -548,7 +683,6 @@ else
             DrawRectangle(588, 295 + i * 22, 12, 12, RAYWHITE);
         }
 
-        desenharGradeMatriz(exibirGrade);
 
         // Desenhar Semáforo
         DrawRectangle(390, 235, 30, 55, BLACK);
@@ -567,7 +701,7 @@ else
 
         // --- HUD ---
         DrawText("CAOS NO CRUZAMENTO", 20, 20, 28, RAYWHITE);
-        DrawText("ESPACO: Alterna fluxo | G: Grade", 20, 55, 16, RAYWHITE);
+        DrawText("ESPACO: Alterna fluxo", 20, 55, 16, RAYWHITE);
 
         DrawText(TextFormat("Pontos: %d", pontos), 20, 85, 22, YELLOW);
         DrawText(TextFormat("Recorde: %d", recorde), 20, 110, 18, GOLD);
