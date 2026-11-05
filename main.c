@@ -5,6 +5,7 @@
 #include <time.h>
 
 #define MAX_CARROS 60
+#define MAX_CICLISTAS 8
 
 #define CIMA 0
 #define BAIXO 1
@@ -30,8 +31,7 @@ typedef struct {
 
 int matrizMapa[MAPA_ALTURA][MAPA_LARGURA];
 
-
-// --- GESTÃO DE RECORDES (FICHEIROS EM C) ---
+// --- GESTÃO DE RECORDES ---
 int carregarRecorde(void)
 {
     FILE *f = fopen("recorde.txt", "r");
@@ -69,7 +69,7 @@ typedef struct NoCarro
     struct NoCarro *proximo;
 } NoCarro;
 
-void adicionarCarro(NoCarro **lista, Carro novoCarro)
+void adicionarCarro(NoCarro **lista, Carro *novoCarro)
 {
     NoCarro *novo = malloc(sizeof(NoCarro));
 
@@ -78,7 +78,7 @@ void adicionarCarro(NoCarro **lista, Carro novoCarro)
         return;
     }
 
-    novo->carro = novoCarro;
+    novo->carro = *novoCarro;
     novo->proximo = *lista;
     *lista = novo;
 }
@@ -118,8 +118,7 @@ void atualizarMatrizComCarros(Carro carros[], int quantidade)
         int larguraCarro = 38;
         int alturaCarro = 26;
 
-        if (carros[i].direcao == CIMA ||
-            carros[i].direcao == BAIXO)
+        if (carros[i].direcao == CIMA || carros[i].direcao == BAIXO)
         {
             larguraCarro = 26;
             alturaCarro = 38;
@@ -135,8 +134,7 @@ void atualizarMatrizComCarros(Carro carros[], int quantidade)
         {
             for (int c = colInicial; c <= colFinal; c++)
             {
-                if (l >= 0 && l < MAPA_ALTURA &&
-                    c >= 0 && c < MAPA_LARGURA)
+                if (l >= 0 && l < MAPA_ALTURA && c >= 0 && c < MAPA_LARGURA)
                 {
                     matrizMapa[l][c] = 1;
                 }
@@ -144,7 +142,6 @@ void atualizarMatrizComCarros(Carro carros[], int quantidade)
         }
     }
 }
-
 
 // --- DESENHO DOS CARROS ---
 void desenharCarros(Carro carros[], int quantidade)
@@ -161,151 +158,130 @@ void desenharCarros(Carro carros[], int quantidade)
         Color detalhe = (Color){230, 230, 230, 255};
 
         // CARROS NA VERTICAL
-        if (carros[i].direcao == CIMA ||
-            carros[i].direcao == BAIXO)
+        if (carros[i].direcao == CIMA || carros[i].direcao == BAIXO)
         {
-            // Sombra
-            DrawRectangleRounded(
-                (Rectangle){x + 2, y + 2, 26, 38},
-                0.25f, 6, sombra
-            );
+            DrawRectangleRounded((Rectangle){x + 2, y + 2, 26, 38}, 0.25f, 6, sombra);
 
-            // Rodas
-            DrawRectangleRounded(
-                (Rectangle){x - 2, y + 5, 5, 10},
-                0.4f, 4, pneu
-            );
+            DrawRectangleRounded((Rectangle){x - 2, y + 5, 5, 10}, 0.4f, 4, pneu);
+            DrawRectangleRounded((Rectangle){x + 23, y + 5, 5, 10}, 0.4f, 4, pneu);
+            DrawRectangleRounded((Rectangle){x - 2, y + 24, 5, 10}, 0.4f, 4, pneu);
+            DrawRectangleRounded((Rectangle){x + 23, y + 24, 5, 10}, 0.4f, 4, pneu);
 
-            DrawRectangleRounded(
-                (Rectangle){x + 23, y + 5, 5, 10},
-                0.4f, 4, pneu
-            );
+            DrawRectangleRounded((Rectangle){x, y, 26, 38}, 0.25f, 6, cor);
+            DrawRectangleRounded((Rectangle){x + 4, y + 5, 18, 9}, 0.2f, 5, vidro);
+            DrawRectangleRounded((Rectangle){x + 4, y + 24, 18, 8}, 0.2f, 5, vidro);
+            DrawRectangle((int)x + 4, (int)y + 17, 18, 2, Fade(BLACK, 0.25f));
 
-            DrawRectangleRounded(
-                (Rectangle){x - 2, y + 24, 5, 10},
-                0.4f, 4, pneu
-            );
-
-            DrawRectangleRounded(
-                (Rectangle){x + 23, y + 24, 5, 10},
-                0.4f, 4, pneu
-            );
-
-            // Carroceria
-            DrawRectangleRounded(
-                (Rectangle){x, y, 26, 38},
-                0.25f, 6, cor
-            );
-
-            // Para-brisa dianteiro
-            DrawRectangleRounded(
-                (Rectangle){x + 4, y + 5, 18, 9},
-                0.2f, 5, vidro
-            );
-
-            // Janela traseira
-            DrawRectangleRounded(
-                (Rectangle){x + 4, y + 24, 18, 8},
-                0.2f, 5, vidro
-            );
-
-            // Separação do teto
-            DrawRectangle(
-                (int)x + 4, (int)y + 17, 18, 2,
-                Fade(BLACK, 0.25f)
-            );
-
-            // Faróis
-            DrawRectangle(
-                (int)x + 3, (int)y + 1, 5, 2, detalhe
-            );
-
-            DrawRectangle(
-                (int)x + 18, (int)y + 1, 5, 2, detalhe
-            );
-
-            // Lanternas traseiras
-            DrawRectangle(
-                (int)x + 3, (int)y + 35, 5, 2, RED
-            );
-
-            DrawRectangle(
-                (int)x + 18, (int)y + 35, 5, 2, RED
-            );
+            DrawRectangle((int)x + 3, (int)y + 1, 5, 2, detalhe);
+            DrawRectangle((int)x + 18, (int)y + 1, 5, 2, detalhe);
+            DrawRectangle((int)x + 3, (int)y + 35, 5, 2, RED);
+            DrawRectangle((int)x + 18, (int)y + 35, 5, 2, RED);
         }
-
         // CARROS NA HORIZONTAL
         else
         {
-            // Sombra
-            DrawRectangleRounded(
-                (Rectangle){x + 2, y + 2, 38, 26},
-                0.25f, 6, sombra
-            );
+            DrawRectangleRounded((Rectangle){x + 2, y + 2, 38, 26}, 0.25f, 6, sombra);
 
-            // Rodas
-            DrawRectangleRounded(
-                (Rectangle){x + 5, y - 2, 10, 5},
-                0.4f, 4, pneu
-            );
+            DrawRectangleRounded((Rectangle){x + 5, y - 2, 10, 5}, 0.4f, 4, pneu);
+            DrawRectangleRounded((Rectangle){x + 24, y - 2, 10, 5}, 0.4f, 4, pneu);
+            DrawRectangleRounded((Rectangle){x + 5, y + 23, 10, 5}, 0.4f, 4, pneu);
+            DrawRectangleRounded((Rectangle){x + 24, y + 23, 10, 5}, 0.4f, 4, pneu);
 
-            DrawRectangleRounded(
-                (Rectangle){x + 24, y - 2, 10, 5},
-                0.4f, 4, pneu
-            );
+            DrawRectangleRounded((Rectangle){x, y, 38, 26}, 0.25f, 6, cor);
+            DrawRectangleRounded((Rectangle){x + 5, y + 4, 9, 18}, 0.2f, 5, vidro);
+            DrawRectangleRounded((Rectangle){x + 24, y + 4, 9, 18}, 0.2f, 5, vidro);
+            DrawRectangle((int)x + 17, (int)y + 4, 2, 18, Fade(BLACK, 0.25f));
 
-            DrawRectangleRounded(
-                (Rectangle){x + 5, y + 23, 10, 5},
-                0.4f, 4, pneu
-            );
-
-            DrawRectangleRounded(
-                (Rectangle){x + 24, y + 23, 10, 5},
-                0.4f, 4, pneu
-            );
-
-            // Carroceria
-            DrawRectangleRounded(
-                (Rectangle){x, y, 38, 26},
-                0.25f, 6, cor
-            );
-
-            // Para-brisa dianteiro
-            DrawRectangleRounded(
-                (Rectangle){x + 5, y + 4, 9, 18},
-                0.2f, 5, vidro
-            );
-
-            // Janela traseira
-            DrawRectangleRounded(
-                (Rectangle){x + 24, y + 4, 9, 18},
-                0.2f, 5, vidro
-            );
-
-            // Separação do teto
-            DrawRectangle(
-                (int)x + 17, (int)y + 4, 2, 18,
-                Fade(BLACK, 0.25f)
-            );
-
-            // Faróis
-            DrawRectangle(
-                (int)x + 1, (int)y + 3, 2, 5, detalhe
-            );
-
-            DrawRectangle(
-                (int)x + 1, (int)y + 18, 2, 5, detalhe
-            );
-
-            // Lanternas traseiras
-            DrawRectangle(
-                (int)x + 35, (int)y + 3, 2, 5, RED
-            );
-
-            DrawRectangle(
-                (int)x + 35, (int)y + 18, 2, 5, RED
-            );
+            DrawRectangle((int)x + 1, (int)y + 3, 2, 5, detalhe);
+            DrawRectangle((int)x + 1, (int)y + 18, 2, 5, detalhe);
+            DrawRectangle((int)x + 35, (int)y + 3, 2, 5, RED);
+            DrawRectangle((int)x + 35, (int)y + 18, 2, 5, RED);
         }
+    }
+}
+
+// --- CICLISTAS NA CICLOVIA ---
+typedef struct {
+    float x;
+    float y;
+    int direcao; // DIREITA ou ESQUERDA
+    Color cor;
+} Ciclista;
+
+void tentarGerarCiclista(Ciclista ciclistas[], int *quantidade, int largura, int *proximaDirecao)
+{
+    if (*quantidade >= MAX_CICLISTAS) return;
+
+    int direcao = *proximaDirecao;
+    float xInicial = (direcao == DIREITA) ? -25.0f : (float)largura + 25.0f;
+
+    for (int i = 0; i < *quantidade; i++) {
+        if (ciclistas[i].direcao == direcao) {
+            if (direcao == DIREITA && ciclistas[i].x < 75.0f) return;
+            if (direcao == ESQUERDA && ciclistas[i].x > largura - 75.0f) return;
+        }
+    }
+
+    Color cores[] = {
+        (Color){30, 90, 210, 255},
+        (Color){245, 145, 30, 255},
+        (Color){220, 50, 80, 255},
+        (Color){40, 160, 90, 255}
+    };
+
+    ciclistas[*quantidade] = (Ciclista){
+        xInicial,
+        282.0f,
+        direcao,
+        cores[rand() % 4]
+    };
+    (*quantidade)++;
+
+    *proximaDirecao = (direcao == DIREITA) ? ESQUERDA : DIREITA;
+}
+
+void atualizarCiclistas(Ciclista ciclistas[], int *quantidade, int largura, float multiplicadorVelocidade)
+{
+    float velocidade = 100.0f * multiplicadorVelocidade * GetFrameTime();
+
+    for (int i = 0; i < *quantidade; i++) {
+        if (ciclistas[i].direcao == DIREITA)
+            ciclistas[i].x += velocidade;
+        else
+            ciclistas[i].x -= velocidade;
+
+        if ((ciclistas[i].direcao == DIREITA && ciclistas[i].x > largura + 30.0f) ||
+            (ciclistas[i].direcao == ESQUERDA && ciclistas[i].x < -30.0f)) {
+            for (int j = i; j < *quantidade - 1; j++)
+                ciclistas[j] = ciclistas[j + 1];
+            (*quantidade)--;
+            i--;
+        }
+    }
+}
+
+void desenharCiclistas(Ciclista ciclistas[], int quantidade)
+{
+    for (int i = 0; i < quantidade; i++) {
+        float x = ciclistas[i].x;
+        float y = ciclistas[i].y;
+        float sentido = (ciclistas[i].direcao == DIREITA) ? 1.0f : -1.0f;
+        Color escuro = (Color){25, 35, 35, 255};
+
+        DrawCircle((int)(x - 7), (int)y, 4, escuro);
+        DrawCircle((int)(x + 7), (int)y, 4, escuro);
+        DrawCircleLines((int)(x - 7), (int)y, 4, RAYWHITE);
+        DrawCircleLines((int)(x + 7), (int)y, 4, RAYWHITE);
+        DrawLineEx((Vector2){x - 7, y}, (Vector2){x, y - 5}, 2, ciclistas[i].cor);
+        DrawLineEx((Vector2){x, y - 5}, (Vector2){x + 7, y}, 2, ciclistas[i].cor);
+        DrawLineEx((Vector2){x - 7, y}, (Vector2){x + 7, y}, 2, ciclistas[i].cor);
+        DrawLineEx((Vector2){x + 5 * sentido, y - 5}, (Vector2){x + 9 * sentido, y - 8}, 2, escuro);
+
+        DrawCircle((int)x, (int)(y - 13), 3, (Color){245, 195, 150, 255});
+        DrawLineEx((Vector2){x, y - 10}, (Vector2){x - 2 * sentido, y - 5}, 3, ciclistas[i].cor);
+        DrawLineEx((Vector2){x - 1 * sentido, y - 8}, (Vector2){x + 6 * sentido, y - 8}, 2, escuro);
+        DrawLineEx((Vector2){x - 2 * sentido, y - 5}, (Vector2){x - 7, y}, 2, escuro);
+        DrawLineEx((Vector2){x - 2 * sentido, y - 5}, (Vector2){x + 7, y}, 2, escuro);
     }
 }
 
@@ -327,30 +303,14 @@ void tentarGerarCarro(Carro carros[], int *quantidade, int largura, int altura)
         case DIREITA:  startX = largura + 20; startY = 370; break;
     }
 
-    // Verifica se a entrada está livre para não gerar em cima de outro carro
     for (int i = 0; i < *quantidade; i++)
     {
         if (carros[i].direcao == dir)
         {
-        if (dir == CIMA &&
-    carros[i].y >= startY &&
-    carros[i].y < startY + 80)
-    return;
-
-if (dir == BAIXO &&
-    carros[i].y <= startY &&
-    carros[i].y > startY - 80)
-    return;
-
-if (dir == ESQUERDA &&
-    carros[i].x >= startX &&
-    carros[i].x < startX + 80)
-    return;
-
-if (dir == DIREITA &&
-    carros[i].x <= startX &&
-    carros[i].x > startX - 80)
-    return;
+            if (dir == CIMA && carros[i].y >= startY && carros[i].y < startY + 80) return;
+            if (dir == BAIXO && carros[i].y <= startY && carros[i].y > startY - 80) return;
+            if (dir == ESQUERDA && carros[i].x >= startX && carros[i].x < startX + 80) return;
+            if (dir == DIREITA && carros[i].x <= startX && carros[i].x > startX - 80) return;
         }
     }
 
@@ -378,57 +338,47 @@ void atualizarCarrosEFilas(
         int estadoAnterior = carros[i].estado;
         bool deveParar = false;
 
-// Verifica a distância disponível até o carro da frente
-float movimentoPermitido = velocidadeBase;
-const float distanciaSeguranca = 12.0f;
+        float movimentoPermitido = velocidadeBase;
+        const float distanciaSeguranca = 12.0f;
 
-for (int j = 0; j < *quantidade; j++)
-{
-    if (i == j || carros[i].direcao != carros[j].direcao)
-        continue;
+        for (int j = 0; j < *quantidade; j++)
+        {
+            if (i == j || carros[i].direcao != carros[j].direcao)
+                continue;
 
-    float distancia = 0.0f;
-    bool carroNaFrente = false;
+            float distancia = 0.0f;
+            bool carroNaFrente = false;
 
-    switch (carros[i].direcao)
-    {
-        case CIMA:
-            carroNaFrente = carros[j].y > carros[i].y;
-            distancia = carros[j].y - (carros[i].y + 38);
-            break;
+            switch (carros[i].direcao)
+            {
+                case CIMA:
+                    carroNaFrente = carros[j].y > carros[i].y;
+                    distancia = carros[j].y - (carros[i].y + 38);
+                    break;
+                case BAIXO:
+                    carroNaFrente = carros[j].y < carros[i].y;
+                    distancia = carros[i].y - (carros[j].y + 38);
+                    break;
+                case ESQUERDA:
+                    carroNaFrente = carros[j].x > carros[i].x;
+                    distancia = carros[j].x - (carros[i].x + 38);
+                    break;
+                case DIREITA:
+                    carroNaFrente = carros[j].x < carros[i].x;
+                    distancia = carros[i].x - (carros[j].x + 38);
+                    break;
+            }
 
-        case BAIXO:
-            carroNaFrente = carros[j].y < carros[i].y;
-            distancia = carros[i].y - (carros[j].y + 38);
-            break;
+            if (carroNaFrente)
+            {
+                float espacoDisponivel = distancia - distanciaSeguranca;
+                if (espacoDisponivel < 0.0f) espacoDisponivel = 0.0f;
+                if (espacoDisponivel < movimentoPermitido) movimentoPermitido = espacoDisponivel;
+            }
+        }
 
-        case ESQUERDA:
-            carroNaFrente = carros[j].x > carros[i].x;
-            distancia = carros[j].x - (carros[i].x + 38);
-            break;
+        if (movimentoPermitido <= 0.0f) deveParar = true;
 
-        case DIREITA:
-            carroNaFrente = carros[j].x < carros[i].x;
-            distancia = carros[i].x - (carros[j].x + 38);
-            break;
-    }
-
-    if (carroNaFrente)
-    {
-        float espacoDisponivel = distancia - distanciaSeguranca;
-
-        if (espacoDisponivel < 0.0f)
-            espacoDisponivel = 0.0f;
-
-        if (espacoDisponivel < movimentoPermitido)
-            movimentoPermitido = espacoDisponivel;
-    }
-}
-
-if (movimentoPermitido <= 0.0f)
-{
-    deveParar = true;
-}
         if (!deveParar)
         {
             switch (carros[i].direcao)
@@ -496,19 +446,17 @@ if (movimentoPermitido <= 0.0f)
             }
         }
 
-  carros[i].parado = deveParar || movimentoPermitido <= 0.0f;
+        carros[i].parado = deveParar || movimentoPermitido <= 0.0f;
 
-        // Contagem de Pontuação ao sair
         if (estadoAnterior == ATRAVESSANDO && carros[i].estado == SAINDO)
         {
             *pontos += 10;
         }
 
-        // Remoção do carro quando sai completamente do ecrã
         if ((carros[i].direcao == CIMA && carros[i].y > altura + 40) ||
-    (carros[i].direcao == BAIXO && carros[i].y < -40) ||
-    (carros[i].direcao == ESQUERDA && carros[i].x > largura + 40) ||
-    (carros[i].direcao == DIREITA && carros[i].x < -40))
+            (carros[i].direcao == BAIXO && carros[i].y < -40) ||
+            (carros[i].direcao == ESQUERDA && carros[i].x > largura + 40) ||
+            (carros[i].direcao == DIREITA && carros[i].x < -40))
         {
             for (int k = i; k < *quantidade - 1; k++)
             {
@@ -520,7 +468,7 @@ if (movimentoPermitido <= 0.0f)
     }
 }
 
-// --- VERIFICAÇÃO DE ACIDENTES ---
+// --- VERIFICAÇÃO DE BATIDAS ENTRE CARROS ---
 bool verificarBatidas(Carro carros[], int quantidade)
 {
     for (int i = 0; i < quantidade; i++)
@@ -541,6 +489,29 @@ bool verificarBatidas(Carro carros[], int quantidade)
     return false;
 }
 
+// --- VERIFICAÇÃO DE ATROPELAMENTO DE CICLISTAS ---
+bool verificarAtropelamento(Carro carros[], int qtdCarros, Ciclista ciclistas[], int qtdCiclistas)
+{
+    for (int i = 0; i < qtdCarros; i++)
+    {
+        Rectangle rectCarro = (carros[i].direcao == CIMA || carros[i].direcao == BAIXO) ?
+            (Rectangle){ carros[i].x, carros[i].y, 26, 38 } :
+            (Rectangle){ carros[i].x, carros[i].y, 38, 26 };
+
+        for (int j = 0; j < qtdCiclistas; j++)
+        {
+            // Caixa de colisão aproximada do ciclista
+            Rectangle rectCiclista = (Rectangle){ ciclistas[j].x - 8, ciclistas[j].y - 14, 16, 18 };
+
+            if (CheckCollisionRecs(rectCarro, rectCiclista))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // --- REINICIALIZAÇÃO ---
 void reiniciarJogo(
     Carro carros[],
@@ -549,7 +520,7 @@ void reiniciarJogo(
     float *tempoJogado,
     float *barraCongestionamento,
     bool *gameOver,
-    bool *colapso,
+    int *causaGameOver,
     bool *fluxoVerticalVerde,
     float *tempoUltimoSpawn
 )
@@ -559,7 +530,7 @@ void reiniciarJogo(
     *tempoJogado = 0.0f;
     *barraCongestionamento = 0.0f;
     *gameOver = false;
-    *colapso = false;
+    *causaGameOver = 0; // 0 = Sem Game Over, 1 = Colapso, 2 = Colisão de Carros, 3 = Atropelamento
     *fluxoVerticalVerde = true;
     *tempoUltimoSpawn = 0.0f;
 }
@@ -573,9 +544,14 @@ int main(void)
 
     Carro carros[MAX_CARROS];
     int quantidadeCarros = 0;
+    Ciclista ciclistas[MAX_CICLISTAS];
+    int quantidadeCiclistas = 0;
+    int proximaDirecaoCiclista = DIREITA;
+    float tempoUltimoCiclistaSpawn = 0.0f;
+
     bool fluxoVerticalVerde = true;
     bool gameOver = false;
-    bool colapso = false;
+    int causaGameOver = 0;
 
     int pontos = 0;
     int recorde = carregarRecorde();
@@ -586,7 +562,7 @@ int main(void)
     InitWindow(largura, altura, "Caos no Cruzamento - Modo Sobrevivência");
     SetTargetFPS(60);
 
-    reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &colapso, &fluxoVerticalVerde, &tempoUltimoSpawn);
+    reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &causaGameOver, &fluxoVerticalVerde, &tempoUltimoSpawn);
 
     while (!WindowShouldClose())
     {
@@ -594,6 +570,7 @@ int main(void)
         {
             tempoJogado += GetFrameTime();
             tempoUltimoSpawn += GetFrameTime();
+            tempoUltimoCiclistaSpawn += GetFrameTime();
 
             // Dificuldade e Frequência de Spawn
             float intervaloSpawn = 3.0f;
@@ -603,7 +580,15 @@ int main(void)
             else if (tempoJogado >= 60.0f) { intervaloSpawn = 1.5f; multiplicadorVelocidade = 1.3f; }
             else if (tempoJogado >= 30.0f) { intervaloSpawn = 2.0f; multiplicadorVelocidade = 1.15f; }
 
-            // Gera novos carros automaticamente
+            // Reduzida a frequência de ciclistas (de 2.5s para 5.0s)
+            if (tempoUltimoCiclistaSpawn >= 5.0f)
+            {
+                tentarGerarCiclista(ciclistas, &quantidadeCiclistas, largura, &proximaDirecaoCiclista);
+                tempoUltimoCiclistaSpawn = 0.0f;
+            }
+
+            atualizarCiclistas(ciclistas, &quantidadeCiclistas, largura, multiplicadorVelocidade);
+
             if (tempoUltimoSpawn >= intervaloSpawn)
             {
                 tentarGerarCarro(carros, &quantidadeCarros, largura, altura);
@@ -619,15 +604,14 @@ int main(void)
             int carrosParados = 0;
             for (int i = 0; i < quantidadeCarros; i++) if (carros[i].parado) carrosParados++;
 
-if (carrosParados >= 3)
-{
-    barraCongestionamento +=
-        (carrosParados - 2) * 1.8f * GetFrameTime();
-}
-else
-{
-    barraCongestionamento -= 3.0f * GetFrameTime();
-}
+            if (carrosParados >= 3)
+            {
+                barraCongestionamento += (carrosParados - 2) * 1.8f * GetFrameTime();
+            }
+            else
+            {
+                barraCongestionamento -= 3.0f * GetFrameTime();
+            }
 
             if (barraCongestionamento < 0.0f) barraCongestionamento = 0.0f;
 
@@ -636,14 +620,21 @@ else
             {
                 barraCongestionamento = 100.0f;
                 gameOver = true;
-                colapso = true;
+                causaGameOver = 1;
                 salvarRecorde(pontos);
                 recorde = carregarRecorde();
             }
             else if (verificarBatidas(carros, quantidadeCarros))
             {
                 gameOver = true;
-                colapso = false;
+                causaGameOver = 2;
+                salvarRecorde(pontos);
+                recorde = carregarRecorde();
+            }
+            else if (verificarAtropelamento(carros, quantidadeCarros, ciclistas, quantidadeCiclistas))
+            {
+                gameOver = true;
+                causaGameOver = 3;
                 salvarRecorde(pontos);
                 recorde = carregarRecorde();
             }
@@ -652,7 +643,10 @@ else
         {
             if (IsKeyPressed(KEY_R))
             {
-                reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &colapso, &fluxoVerticalVerde, &tempoUltimoSpawn);
+                reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &causaGameOver, &fluxoVerticalVerde, &tempoUltimoSpawn);
+                quantidadeCiclistas = 0;
+                proximaDirecaoCiclista = DIREITA;
+                tempoUltimoCiclistaSpawn = 0.0f;
             }
         }
 
@@ -683,7 +677,6 @@ else
             DrawRectangle(588, 295 + i * 22, 12, 12, RAYWHITE);
         }
 
-
         // Desenhar Semáforo
         DrawRectangle(390, 235, 30, 55, BLACK);
         if (fluxoVerticalVerde)
@@ -697,6 +690,7 @@ else
             DrawCircle(405, 275, 8, GREEN);
         }
 
+        desenharCiclistas(ciclistas, quantidadeCiclistas);
         desenharCarros(carros, quantidadeCarros);
 
         // --- HUD ---
@@ -723,15 +717,21 @@ else
         if (gameOver)
         {
             DrawRectangle(0, 0, largura, altura, Fade(BLACK, 0.8f));
-            if (colapso)
+
+            if (causaGameOver == 1)
             {
                 DrawText("CONGESTIONAMENTO TOTAL!", largura/2 - MeasureText("CONGESTIONAMENTO TOTAL!", 34)/2, 260, 34, RED);
                 DrawText("A cidade entrou em colapso!", largura/2 - MeasureText("A cidade entrou em colapso!", 20)/2, 305, 20, RAYWHITE);
             }
-            else
+            else if (causaGameOver == 2)
             {
                 DrawText("ACIDENTE NO CRUZAMENTO!", largura/2 - MeasureText("ACIDENTE NO CRUZAMENTO!", 34)/2, 260, 34, RED);
                 DrawText("Dois carros colidiram!", largura/2 - MeasureText("Dois carros colidiram!", 20)/2, 305, 20, RAYWHITE);
+            }
+            else if (causaGameOver == 3)
+            {
+                DrawText("ATROPELAMENTO NA CICLOVIA!", largura/2 - MeasureText("ATROPELAMENTO NA CICLOVIA!", 34)/2, 260, 34, RED);
+                DrawText("Um carro atingiu um ciclista!", largura/2 - MeasureText("Um carro atingiu um ciclista!", 20)/2, 305, 20, RAYWHITE);
             }
 
             DrawText(TextFormat("Pontuacao Final: %d", pontos), largura/2 - MeasureText(TextFormat("Pontuacao Final: %d", pontos), 22)/2, 350, 22, YELLOW);
