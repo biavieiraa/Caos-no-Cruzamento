@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
 #define MAX_CARROS 60
 #define MAX_CICLISTAS 8
+#define MAX_PEDESTRES 6
 
 #define CIMA 0
 #define BAIXO 1
@@ -29,9 +31,29 @@ typedef struct {
     bool parado;
 } Carro;
 
+typedef struct NoCarro
+{
+    Carro carro;
+    struct NoCarro *proximo;
+} NoCarro;
+
+typedef struct {
+    float x;
+    float y;
+    int direcao;
+    Color cor;
+} Ciclista;
+
+typedef struct {
+    float x;
+    float y;
+    int direcao;
+    Color cor;
+} Pedestre;
+
 int matrizMapa[MAPA_ALTURA][MAPA_LARGURA];
 
-// --- GESTÃO DE RECORDES ---
+// GESTÃO DE RECORDES
 int carregarRecorde(void)
 {
     FILE *f = fopen("recorde.txt", "r");
@@ -63,11 +85,6 @@ void salvarRecorde(int pontos)
 }
 
 // --- LISTA ENCADEADA DE CARROS ---
-typedef struct NoCarro
-{
-    Carro carro;
-    struct NoCarro *proximo;
-} NoCarro;
 
 void adicionarCarro(NoCarro **lista, Carro *novoCarro)
 {
@@ -200,13 +217,7 @@ void desenharCarros(Carro carros[], int quantidade)
     }
 }
 
-// --- CICLISTAS NA CICLOVIA ---
-typedef struct {
-    float x;
-    float y;
-    int direcao; // DIREITA ou ESQUERDA
-    Color cor;
-} Ciclista;
+// ciclistas
 
 void tentarGerarCiclista(Ciclista ciclistas[], int *quantidade, int largura, int *proximaDirecao)
 {
@@ -285,7 +296,113 @@ void desenharCiclistas(Ciclista ciclistas[], int quantidade)
     }
 }
 
-// --- GERADOR AUTOMÁTICO DE CARROS ---
+// --- PEDESTRES ---
+void tentarGerarPedestre(Pedestre pedestres[], int *quantidade, int *proximaDirecao)
+{
+    if (*quantidade >= MAX_PEDESTRES) return;
+
+    int direcao = *proximaDirecao;
+
+    float x = (direcao == BAIXO) ? 400.0f : 588.0f;
+    float y = (direcao == BAIXO) ? 245.0f : 455.0f;
+
+    // Evita gerar pedestres muito próximos uns dos outros
+    for (int i = 0; i < *quantidade; i++)
+    {
+        if (pedestres[i].direcao == direcao &&
+            fabsf(pedestres[i].y - y) < 60.0f)
+        {
+            return;
+        }
+    }
+
+    pedestres[*quantidade] = (Pedestre){
+        x, y, direcao, (Color){245, 195, 150, 255}
+    };
+
+    (*quantidade)++;
+
+    *proximaDirecao = (direcao == BAIXO) ? CIMA : BAIXO;
+}
+
+void atualizarPedestres(Pedestre pedestres[], int *quantidade)
+{
+    float velocidade = 75.0f * GetFrameTime();
+
+    for (int i = 0; i < *quantidade; i++)
+    {
+        if (pedestres[i].direcao == BAIXO)
+            pedestres[i].y += velocidade;
+        else
+            pedestres[i].y -= velocidade;
+
+        // Remove quando termina a travessia
+        if (pedestres[i].y > 475.0f || pedestres[i].y < 225.0f)
+        {
+            for (int j = i; j < *quantidade - 1; j++)
+                pedestres[j] = pedestres[j + 1];
+
+            (*quantidade)--;
+            i--;
+        }
+    }
+}
+
+void desenharPedestres(Pedestre pedestres[], int quantidade)
+{
+    for (int i = 0; i < quantidade; i++)
+    {
+        float x = pedestres[i].x;
+        float y = pedestres[i].y;
+
+        Color corpo = (Color){40, 90, 200, 255};
+        Color pele = pedestres[i].cor;
+        Color escuro = (Color){35, 35, 35, 255};
+
+        // Cabeça
+        DrawCircle((int)x, (int)(y - 7), 5, pele);
+
+        // Corpo
+        DrawLineEx(
+            (Vector2){x, y - 2},
+            (Vector2){x, y + 10},
+            5,
+            corpo
+        );
+
+        // Braços
+        DrawLineEx(
+            (Vector2){x, y + 1},
+            (Vector2){x - 7, y + 6},
+            3,
+            corpo
+        );
+
+        DrawLineEx(
+            (Vector2){x, y + 1},
+            (Vector2){x + 7, y + 6},
+            3,
+            corpo
+        );
+
+        // Pernas
+        DrawLineEx(
+            (Vector2){x, y + 10},
+            (Vector2){x - 5, y + 17},
+            3,
+            escuro
+        );
+
+        DrawLineEx(
+            (Vector2){x, y + 10},
+            (Vector2){x + 5, y + 17},
+            3,
+            escuro
+        );
+    }
+}
+
+// GERADOR AUTOMÁTICO DE CARROS
 void tentarGerarCarro(Carro carros[], int *quantidade, int largura, int altura)
 {
     if (*quantidade >= MAX_CARROS) return;
@@ -318,7 +435,7 @@ void tentarGerarCarro(Carro carros[], int *quantidade, int largura, int altura)
     (*quantidade)++;
 }
 
-// --- MOVIMENTAÇÃO E SISTEMA DE FILAS ---
+// MOVIMENTAÇÃO E SISTEMA DE FILAS
 void atualizarCarrosEFilas(
     Carro carros[],
     int *quantidade,
@@ -489,7 +606,7 @@ bool verificarBatidas(Carro carros[], int quantidade)
     return false;
 }
 
-// --- VERIFICAÇÃO DE ATROPELAMENTO DE CICLISTAS ---
+// VERIFICAÇÃO DE ATROPELAMENTO DE CICLISTAS
 bool verificarAtropelamento(Carro carros[], int qtdCarros, Ciclista ciclistas[], int qtdCiclistas)
 {
     for (int i = 0; i < qtdCarros; i++)
@@ -512,7 +629,42 @@ bool verificarAtropelamento(Carro carros[], int qtdCarros, Ciclista ciclistas[],
     return false;
 }
 
-// --- REINICIALIZAÇÃO ---
+// VERIFICAÇÃO DE ATROPELAMENTO DE PEDESTRES
+bool verificarAtropelamentoPedestres(
+    Carro carros[],
+    int qtdCarros,
+    Pedestre pedestres[],
+    int qtdPedestres
+)
+{
+    for (int i = 0; i < qtdCarros; i++)
+    {
+        Rectangle rectCarro =
+            (carros[i].direcao == CIMA || carros[i].direcao == BAIXO) ?
+            (Rectangle){carros[i].x, carros[i].y, 26, 38} :
+            (Rectangle){carros[i].x, carros[i].y, 38, 26};
+
+        for (int j = 0; j < qtdPedestres; j++)
+        {
+            // Área de colisão do pedestre
+            Rectangle rectPedestre = {
+                pedestres[j].x - 6,
+                pedestres[j].y - 7,
+                12,
+                24
+            };
+
+            if (CheckCollisionRecs(rectCarro, rectPedestre))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// REINICIALIZAÇÃO
 void reiniciarJogo(
     Carro carros[],
     int *quantidade,
@@ -530,7 +682,7 @@ void reiniciarJogo(
     *tempoJogado = 0.0f;
     *barraCongestionamento = 0.0f;
     *gameOver = false;
-    *causaGameOver = 0; // 0 = Sem Game Over, 1 = Colapso, 2 = Colisão de Carros, 3 = Atropelamento
+*causaGameOver = 0; // 0 = Sem Game Over, 1 = Colapso, 2 = Colisão de Carros, 3 = Atropelamento de Ciclista, 4 = Atropelamento de Pedestre
     *fluxoVerticalVerde = true;
     *tempoUltimoSpawn = 0.0f;
 }
@@ -548,6 +700,10 @@ int main(void)
     int quantidadeCiclistas = 0;
     int proximaDirecaoCiclista = DIREITA;
     float tempoUltimoCiclistaSpawn = 0.0f;
+    Pedestre pedestres[MAX_PEDESTRES];
+int quantidadePedestres = 0;
+int proximaDirecaoPedestre = BAIXO;
+float tempoUltimoPedestreSpawn = 0.0f;
 
     bool fluxoVerticalVerde = true;
     bool gameOver = false;
@@ -571,6 +727,7 @@ int main(void)
             tempoJogado += GetFrameTime();
             tempoUltimoSpawn += GetFrameTime();
             tempoUltimoCiclistaSpawn += GetFrameTime();
+            tempoUltimoPedestreSpawn += GetFrameTime();
 
             // Dificuldade e Frequência de Spawn
             float intervaloSpawn = 3.0f;
@@ -588,6 +745,19 @@ int main(void)
             }
 
             atualizarCiclistas(ciclistas, &quantidadeCiclistas, largura, multiplicadorVelocidade);
+            // Geração e movimentação dos pedestres
+            if (tempoUltimoPedestreSpawn >= 3.5f)
+            {
+                tentarGerarPedestre(
+                    pedestres,
+                    &quantidadePedestres,
+                    &proximaDirecaoPedestre
+                );
+
+                tempoUltimoPedestreSpawn = 0.0f;
+            }
+
+            atualizarPedestres(pedestres, &quantidadePedestres);
 
             if (tempoUltimoSpawn >= intervaloSpawn)
             {
@@ -638,6 +808,14 @@ int main(void)
                 salvarRecorde(pontos);
                 recorde = carregarRecorde();
             }
+            else if (verificarAtropelamentoPedestres(carros, quantidadeCarros, pedestres, quantidadePedestres
+            ))
+            {
+                gameOver = true;
+                causaGameOver = 4;
+                salvarRecorde(pontos);
+                recorde = carregarRecorde();
+            }
         }
         else
         {
@@ -645,6 +823,9 @@ int main(void)
             {
                 reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &causaGameOver, &fluxoVerticalVerde, &tempoUltimoSpawn);
                 quantidadeCiclistas = 0;
+                quantidadePedestres = 0;
+                proximaDirecaoPedestre = BAIXO;
+                tempoUltimoPedestreSpawn = 0.0f;
                 proximaDirecaoCiclista = DIREITA;
                 tempoUltimoCiclistaSpawn = 0.0f;
             }
@@ -677,23 +858,26 @@ int main(void)
             DrawRectangle(588, 295 + i * 22, 12, 12, RAYWHITE);
         }
 
-        // Desenhar Semáforo
-        DrawRectangle(390, 235, 30, 55, BLACK);
-        if (fluxoVerticalVerde)
-        {
-            DrawCircle(405, 250, 8, GREEN);
-            DrawCircle(405, 275, 8, RED);
-        }
-        else
-        {
-            DrawCircle(405, 250, 8, RED);
-            DrawCircle(405, 275, 8, GREEN);
-        }
+// semaforo
+DrawText("SEMAFORO HORIZONTAL", 335, 155, 16, RAYWHITE);
 
-        desenharCiclistas(ciclistas, quantidadeCiclistas);
-        desenharCarros(carros, quantidadeCarros);
+DrawRectangle(390, 190, 30, 55, BLACK);
 
-        // --- HUD ---
+if (fluxoVerticalVerde)
+{
+    DrawCircle(405, 205, 8, GREEN);
+    DrawCircle(405, 230, 8, RED);
+}
+else
+{
+    DrawCircle(405, 205, 8, RED);
+    DrawCircle(405, 230, 8, GREEN);
+}
+
+desenharCiclistas(ciclistas, quantidadeCiclistas);
+desenharPedestres(pedestres, quantidadePedestres);
+desenharCarros(carros, quantidadeCarros);
+
         DrawText("CAOS NO CRUZAMENTO", 20, 20, 28, RAYWHITE);
         DrawText("ESPACO: Alterna fluxo", 20, 55, 16, RAYWHITE);
 
@@ -732,6 +916,24 @@ int main(void)
             {
                 DrawText("ATROPELAMENTO NA CICLOVIA!", largura/2 - MeasureText("ATROPELAMENTO NA CICLOVIA!", 34)/2, 260, 34, RED);
                 DrawText("Um carro atingiu um ciclista!", largura/2 - MeasureText("Um carro atingiu um ciclista!", 20)/2, 305, 20, RAYWHITE);
+            }
+            else if (causaGameOver == 4)
+            {
+                DrawText(
+                    "ATROPELAMENTO DE PEDESTRE!",
+                    largura/2 - MeasureText("ATROPELAMENTO DE PEDESTRE!", 34)/2,
+                    260,
+                    34,
+                    RED
+                );
+
+                DrawText(
+                    "Um carro atingiu um pedestre!",
+                    largura/2 - MeasureText("Um carro atingiu um pedestre!", 20)/2,
+                    305,
+                    20,
+                    RAYWHITE
+                );
             }
 
             DrawText(TextFormat("Pontuacao Final: %d", pontos), largura/2 - MeasureText(TextFormat("Pontuacao Final: %d", pontos), 22)/2, 350, 22, YELLOW);
