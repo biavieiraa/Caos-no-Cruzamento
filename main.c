@@ -1,3 +1,4 @@
+
 #include "raylib.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -31,8 +32,7 @@ typedef struct {
     bool parado;
 } Carro;
 
-typedef struct NoCarro
-{
+typedef struct NoCarro {
     Carro carro;
     struct NoCarro *proximo;
 } NoCarro;
@@ -51,9 +51,63 @@ typedef struct {
     Color cor;
 } Pedestre;
 
-int matrizMapa[MAPA_ALTURA][MAPA_LARGURA];
 
-// GESTÃO DE RECORDES
+void atualizarMatrizComCarros(Carro carros[], int quantidade);
+void desenharMapa(bool fluxoVerticalVerde, int largura, int altura);
+
+
+void desenharCarros(Carro carros[], int quantidade);
+
+void tentarGerarCiclista(Ciclista ciclistas[], int *quantidade, int largura, int *proximaDirecao);
+void atualizarCiclistas(Ciclista ciclistas[], int *quantidade, int largura, float multiplicadorVelocidade);
+void desenharCiclistas(Ciclista ciclistas[], int quantidade);
+
+void tentarGerarPedestre(Pedestre pedestres[], int *quantidade, int *proximaDirecao);
+void atualizarPedestres(Pedestre pedestres[], int *quantidade);
+void desenharPedestres(Pedestre pedestres[], int quantidade);
+
+void tentarGerarCarro(Carro carros[], int *quantidade, int largura, int altura);
+
+void atualizarCarrosEFilas(
+    Carro carros[],
+    int *quantidade,
+    int largura,
+    int altura,
+    bool fluxoVerticalVerde,
+    float multiplicadorDificuldade,
+    int *pontos
+);
+
+bool verificarBatidas(Carro carros[], int quantidade);
+
+bool verificarAtropelamento(
+    Carro carros[],
+    int qtdCarros,
+    Ciclista ciclistas[],
+    int qtdCiclistas
+);
+
+bool verificarAtropelamentoPedestres(
+    Carro carros[],
+    int qtdCarros,
+    Pedestre pedestres[],
+    int qtdPedestres
+);
+
+void reiniciarJogo(
+    Carro carros[],
+    int *quantidade,
+    int *pontos,
+    float *tempoJogado,
+    float *barraCongestionamento,
+    bool *gameOver,
+    int *causaGameOver,
+    bool *fluxoVerticalVerde,
+    float *tempoUltimoSpawn
+);
+
+//recordes
+
 int carregarRecorde(void)
 {
     FILE *f = fopen("recorde.txt", "r");
@@ -84,7 +138,6 @@ void salvarRecorde(int pontos)
     }
 }
 
-// --- LISTA ENCADEADA DE CARROS ---
 
 void adicionarCarro(NoCarro **lista, Carro *novoCarro)
 {
@@ -114,578 +167,6 @@ void liberarCarros(NoCarro **lista)
     *lista = NULL;
 }
 
-// --- LIMPEZA E MATRIZ ---
-void limparMatriz(void)
-{
-    for (int l = 0; l < MAPA_ALTURA; l++)
-    {
-        for (int c = 0; c < MAPA_LARGURA; c++)
-        {
-            matrizMapa[l][c] = 0;
-        }
-    }
-}
-
-void atualizarMatrizComCarros(Carro carros[], int quantidade)
-{
-    limparMatriz();
-
-    for (int i = 0; i < quantidade; i++)
-    {
-        int larguraCarro = 38;
-        int alturaCarro = 26;
-
-        if (carros[i].direcao == CIMA || carros[i].direcao == BAIXO)
-        {
-            larguraCarro = 26;
-            alturaCarro = 38;
-        }
-
-        int colInicial = (int)(carros[i].x / TAM_CELULA);
-        int linInicial = (int)(carros[i].y / TAM_CELULA);
-
-        int colFinal = (int)((carros[i].x + larguraCarro - 1) / TAM_CELULA);
-        int linFinal = (int)((carros[i].y + alturaCarro - 1) / TAM_CELULA);
-
-        for (int l = linInicial; l <= linFinal; l++)
-        {
-            for (int c = colInicial; c <= colFinal; c++)
-            {
-                if (l >= 0 && l < MAPA_ALTURA && c >= 0 && c < MAPA_LARGURA)
-                {
-                    matrizMapa[l][c] = 1;
-                }
-            }
-        }
-    }
-}
-
-// --- DESENHO DOS CARROS ---
-void desenharCarros(Carro carros[], int quantidade)
-{
-    for (int i = 0; i < quantidade; i++)
-    {
-        float x = carros[i].x;
-        float y = carros[i].y;
-
-        Color cor = carros[i].cor;
-        Color sombra = (Color){25, 25, 25, 255};
-        Color vidro = (Color){160, 210, 225, 255};
-        Color pneu = (Color){20, 20, 20, 255};
-        Color detalhe = (Color){230, 230, 230, 255};
-
-        // CARROS NA VERTICAL
-        if (carros[i].direcao == CIMA || carros[i].direcao == BAIXO)
-        {
-            DrawRectangleRounded((Rectangle){x + 2, y + 2, 26, 38}, 0.25f, 6, sombra);
-
-            DrawRectangleRounded((Rectangle){x - 2, y + 5, 5, 10}, 0.4f, 4, pneu);
-            DrawRectangleRounded((Rectangle){x + 23, y + 5, 5, 10}, 0.4f, 4, pneu);
-            DrawRectangleRounded((Rectangle){x - 2, y + 24, 5, 10}, 0.4f, 4, pneu);
-            DrawRectangleRounded((Rectangle){x + 23, y + 24, 5, 10}, 0.4f, 4, pneu);
-
-            DrawRectangleRounded((Rectangle){x, y, 26, 38}, 0.25f, 6, cor);
-            DrawRectangleRounded((Rectangle){x + 4, y + 5, 18, 9}, 0.2f, 5, vidro);
-            DrawRectangleRounded((Rectangle){x + 4, y + 24, 18, 8}, 0.2f, 5, vidro);
-            DrawRectangle((int)x + 4, (int)y + 17, 18, 2, Fade(BLACK, 0.25f));
-
-            DrawRectangle((int)x + 3, (int)y + 1, 5, 2, detalhe);
-            DrawRectangle((int)x + 18, (int)y + 1, 5, 2, detalhe);
-            DrawRectangle((int)x + 3, (int)y + 35, 5, 2, RED);
-            DrawRectangle((int)x + 18, (int)y + 35, 5, 2, RED);
-        }
-        // CARROS NA HORIZONTAL
-        else
-        {
-            DrawRectangleRounded((Rectangle){x + 2, y + 2, 38, 26}, 0.25f, 6, sombra);
-
-            DrawRectangleRounded((Rectangle){x + 5, y - 2, 10, 5}, 0.4f, 4, pneu);
-            DrawRectangleRounded((Rectangle){x + 24, y - 2, 10, 5}, 0.4f, 4, pneu);
-            DrawRectangleRounded((Rectangle){x + 5, y + 23, 10, 5}, 0.4f, 4, pneu);
-            DrawRectangleRounded((Rectangle){x + 24, y + 23, 10, 5}, 0.4f, 4, pneu);
-
-            DrawRectangleRounded((Rectangle){x, y, 38, 26}, 0.25f, 6, cor);
-            DrawRectangleRounded((Rectangle){x + 5, y + 4, 9, 18}, 0.2f, 5, vidro);
-            DrawRectangleRounded((Rectangle){x + 24, y + 4, 9, 18}, 0.2f, 5, vidro);
-            DrawRectangle((int)x + 17, (int)y + 4, 2, 18, Fade(BLACK, 0.25f));
-
-            DrawRectangle((int)x + 1, (int)y + 3, 2, 5, detalhe);
-            DrawRectangle((int)x + 1, (int)y + 18, 2, 5, detalhe);
-            DrawRectangle((int)x + 35, (int)y + 3, 2, 5, RED);
-            DrawRectangle((int)x + 35, (int)y + 18, 2, 5, RED);
-        }
-    }
-}
-
-// ciclistas
-
-void tentarGerarCiclista(Ciclista ciclistas[], int *quantidade, int largura, int *proximaDirecao)
-{
-    if (*quantidade >= MAX_CICLISTAS) return;
-
-    int direcao = *proximaDirecao;
-    float xInicial = (direcao == DIREITA) ? -25.0f : (float)largura + 25.0f;
-
-    for (int i = 0; i < *quantidade; i++) {
-        if (ciclistas[i].direcao == direcao) {
-            if (direcao == DIREITA && ciclistas[i].x < 75.0f) return;
-            if (direcao == ESQUERDA && ciclistas[i].x > largura - 75.0f) return;
-        }
-    }
-
-    Color cores[] = {
-        (Color){30, 90, 210, 255},
-        (Color){245, 145, 30, 255},
-        (Color){220, 50, 80, 255},
-        (Color){40, 160, 90, 255}
-    };
-
-    ciclistas[*quantidade] = (Ciclista){
-        xInicial,
-        282.0f,
-        direcao,
-        cores[rand() % 4]
-    };
-    (*quantidade)++;
-
-    *proximaDirecao = (direcao == DIREITA) ? ESQUERDA : DIREITA;
-}
-
-void atualizarCiclistas(Ciclista ciclistas[], int *quantidade, int largura, float multiplicadorVelocidade)
-{
-    float velocidade = 100.0f * multiplicadorVelocidade * GetFrameTime();
-
-    for (int i = 0; i < *quantidade; i++) {
-        if (ciclistas[i].direcao == DIREITA)
-            ciclistas[i].x += velocidade;
-        else
-            ciclistas[i].x -= velocidade;
-
-        if ((ciclistas[i].direcao == DIREITA && ciclistas[i].x > largura + 30.0f) ||
-            (ciclistas[i].direcao == ESQUERDA && ciclistas[i].x < -30.0f)) {
-            for (int j = i; j < *quantidade - 1; j++)
-                ciclistas[j] = ciclistas[j + 1];
-            (*quantidade)--;
-            i--;
-        }
-    }
-}
-
-void desenharCiclistas(Ciclista ciclistas[], int quantidade)
-{
-    for (int i = 0; i < quantidade; i++) {
-        float x = ciclistas[i].x;
-        float y = ciclistas[i].y;
-        float sentido = (ciclistas[i].direcao == DIREITA) ? 1.0f : -1.0f;
-        Color escuro = (Color){25, 35, 35, 255};
-
-        DrawCircle((int)(x - 7), (int)y, 4, escuro);
-        DrawCircle((int)(x + 7), (int)y, 4, escuro);
-        DrawCircleLines((int)(x - 7), (int)y, 4, RAYWHITE);
-        DrawCircleLines((int)(x + 7), (int)y, 4, RAYWHITE);
-        DrawLineEx((Vector2){x - 7, y}, (Vector2){x, y - 5}, 2, ciclistas[i].cor);
-        DrawLineEx((Vector2){x, y - 5}, (Vector2){x + 7, y}, 2, ciclistas[i].cor);
-        DrawLineEx((Vector2){x - 7, y}, (Vector2){x + 7, y}, 2, ciclistas[i].cor);
-        DrawLineEx((Vector2){x + 5 * sentido, y - 5}, (Vector2){x + 9 * sentido, y - 8}, 2, escuro);
-
-        DrawCircle((int)x, (int)(y - 13), 3, (Color){245, 195, 150, 255});
-        DrawLineEx((Vector2){x, y - 10}, (Vector2){x - 2 * sentido, y - 5}, 3, ciclistas[i].cor);
-        DrawLineEx((Vector2){x - 1 * sentido, y - 8}, (Vector2){x + 6 * sentido, y - 8}, 2, escuro);
-        DrawLineEx((Vector2){x - 2 * sentido, y - 5}, (Vector2){x - 7, y}, 2, escuro);
-        DrawLineEx((Vector2){x - 2 * sentido, y - 5}, (Vector2){x + 7, y}, 2, escuro);
-    }
-}
-
-// --- PEDESTRES ---
-void tentarGerarPedestre(Pedestre pedestres[], int *quantidade, int *proximaDirecao)
-{
-    if (*quantidade >= MAX_PEDESTRES) return;
-
-    int direcao = *proximaDirecao;
-
-    float x = (direcao == BAIXO) ? 400.0f : 588.0f;
-    float y = (direcao == BAIXO) ? 245.0f : 455.0f;
-
-    // Evita gerar pedestres muito próximos uns dos outros
-    for (int i = 0; i < *quantidade; i++)
-    {
-        if (pedestres[i].direcao == direcao &&
-            fabsf(pedestres[i].y - y) < 60.0f)
-        {
-            return;
-        }
-    }
-
-    pedestres[*quantidade] = (Pedestre){
-        x, y, direcao, (Color){245, 195, 150, 255}
-    };
-
-    (*quantidade)++;
-
-    *proximaDirecao = (direcao == BAIXO) ? CIMA : BAIXO;
-}
-
-void atualizarPedestres(Pedestre pedestres[], int *quantidade)
-{
-    float velocidade = 75.0f * GetFrameTime();
-
-    for (int i = 0; i < *quantidade; i++)
-    {
-        if (pedestres[i].direcao == BAIXO)
-            pedestres[i].y += velocidade;
-        else
-            pedestres[i].y -= velocidade;
-
-        // Remove quando termina a travessia
-        if (pedestres[i].y > 475.0f || pedestres[i].y < 225.0f)
-        {
-            for (int j = i; j < *quantidade - 1; j++)
-                pedestres[j] = pedestres[j + 1];
-
-            (*quantidade)--;
-            i--;
-        }
-    }
-}
-
-void desenharPedestres(Pedestre pedestres[], int quantidade)
-{
-    for (int i = 0; i < quantidade; i++)
-    {
-        float x = pedestres[i].x;
-        float y = pedestres[i].y;
-
-        Color corpo = (Color){40, 90, 200, 255};
-        Color pele = pedestres[i].cor;
-        Color escuro = (Color){35, 35, 35, 255};
-
-        // Cabeça
-        DrawCircle((int)x, (int)(y - 7), 5, pele);
-
-        // Corpo
-        DrawLineEx(
-            (Vector2){x, y - 2},
-            (Vector2){x, y + 10},
-            5,
-            corpo
-        );
-
-        // Braços
-        DrawLineEx(
-            (Vector2){x, y + 1},
-            (Vector2){x - 7, y + 6},
-            3,
-            corpo
-        );
-
-        DrawLineEx(
-            (Vector2){x, y + 1},
-            (Vector2){x + 7, y + 6},
-            3,
-            corpo
-        );
-
-        // Pernas
-        DrawLineEx(
-            (Vector2){x, y + 10},
-            (Vector2){x - 5, y + 17},
-            3,
-            escuro
-        );
-
-        DrawLineEx(
-            (Vector2){x, y + 10},
-            (Vector2){x + 5, y + 17},
-            3,
-            escuro
-        );
-    }
-}
-
-// GERADOR AUTOMÁTICO DE CARROS
-void tentarGerarCarro(Carro carros[], int *quantidade, int largura, int altura)
-{
-    if (*quantidade >= MAX_CARROS) return;
-
-    int dir = rand() % 4;
-    float startX = 0, startY = 0;
-    Color cores[] = { RED, BLUE, PINK, ORANGE, PURPLE, YELLOW, LIME, SKYBLUE };
-    Color corSorteada = cores[rand() % 8];
-
-    switch (dir)
-    {
-        case CIMA:     startX = 455; startY = -60; break;
-        case BAIXO:    startX = 515; startY = altura + 20; break;
-        case ESQUERDA: startX = -60; startY = 290; break;
-        case DIREITA:  startX = largura + 20; startY = 370; break;
-    }
-
-    for (int i = 0; i < *quantidade; i++)
-    {
-        if (carros[i].direcao == dir)
-        {
-            if (dir == CIMA && carros[i].y >= startY && carros[i].y < startY + 80) return;
-            if (dir == BAIXO && carros[i].y <= startY && carros[i].y > startY - 80) return;
-            if (dir == ESQUERDA && carros[i].x >= startX && carros[i].x < startX + 80) return;
-            if (dir == DIREITA && carros[i].x <= startX && carros[i].x > startX - 80) return;
-        }
-    }
-
-    carros[*quantidade] = (Carro){ startX, startY, dir, corSorteada, APROXIMANDO, false };
-    (*quantidade)++;
-}
-
-// MOVIMENTAÇÃO E SISTEMA DE FILAS
-void atualizarCarrosEFilas(
-    Carro carros[],
-    int *quantidade,
-    int largura,
-    int altura,
-    bool fluxoVerticalVerde,
-    float multiplicadorDificuldade,
-    int *pontos
-)
-{
-    float velocidadeBase = 180.0f * multiplicadorDificuldade * GetFrameTime();
-
-    for (int i = 0; i < *quantidade; i++)
-    {
-        int carroVertical = (carros[i].direcao == CIMA || carros[i].direcao == BAIXO);
-        int sinalVerde = (carroVertical == fluxoVerticalVerde);
-        int estadoAnterior = carros[i].estado;
-        bool deveParar = false;
-
-        float movimentoPermitido = velocidadeBase;
-        const float distanciaSeguranca = 12.0f;
-
-        for (int j = 0; j < *quantidade; j++)
-        {
-            if (i == j || carros[i].direcao != carros[j].direcao)
-                continue;
-
-            float distancia = 0.0f;
-            bool carroNaFrente = false;
-
-            switch (carros[i].direcao)
-            {
-                case CIMA:
-                    carroNaFrente = carros[j].y > carros[i].y;
-                    distancia = carros[j].y - (carros[i].y + 38);
-                    break;
-                case BAIXO:
-                    carroNaFrente = carros[j].y < carros[i].y;
-                    distancia = carros[i].y - (carros[j].y + 38);
-                    break;
-                case ESQUERDA:
-                    carroNaFrente = carros[j].x > carros[i].x;
-                    distancia = carros[j].x - (carros[i].x + 38);
-                    break;
-                case DIREITA:
-                    carroNaFrente = carros[j].x < carros[i].x;
-                    distancia = carros[i].x - (carros[j].x + 38);
-                    break;
-            }
-
-            if (carroNaFrente)
-            {
-                float espacoDisponivel = distancia - distanciaSeguranca;
-                if (espacoDisponivel < 0.0f) espacoDisponivel = 0.0f;
-                if (espacoDisponivel < movimentoPermitido) movimentoPermitido = espacoDisponivel;
-            }
-        }
-
-        if (movimentoPermitido <= 0.0f) deveParar = true;
-
-        if (!deveParar)
-        {
-            switch (carros[i].direcao)
-            {
-                case CIMA:
-                {
-                    float limite = 236.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].y += movimentoPermitido;
-                    else if (carros[i].y + 38 < limite)
-                    {
-                        carros[i].y += movimentoPermitido;
-                        if (carros[i].y + 38 > limite) carros[i].y = limite - 38;
-                    }
-                    else deveParar = true;
-
-                    if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].y + 38 >= limite) carros[i].estado = ATRAVESSANDO;
-                    if (carros[i].estado == ATRAVESSANDO && carros[i].y >= 430) carros[i].estado = SAINDO;
-                    break;
-                }
-                case BAIXO:
-                {
-                    float limite = 450.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].y -= movimentoPermitido;
-                    else if (carros[i].y > limite)
-                    {
-                        carros[i].y -= movimentoPermitido;
-                        if (carros[i].y < limite) carros[i].y = limite;
-                    }
-                    else deveParar = true;
-
-                    if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].y <= limite) carros[i].estado = ATRAVESSANDO;
-                    if (carros[i].estado == ATRAVESSANDO && carros[i].y + 38 < 270) carros[i].estado = SAINDO;
-                    break;
-                }
-                case ESQUERDA:
-                {
-                    float limite = 407.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].x += movimentoPermitido;
-                    else if (carros[i].x + 38 < limite)
-                    {
-                        carros[i].x += movimentoPermitido;
-                        if (carros[i].x + 38 > limite) carros[i].x = limite - 38;
-                    }
-                    else deveParar = true;
-
-                    if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].x + 38 >= limite) carros[i].estado = ATRAVESSANDO;
-                    if (carros[i].estado == ATRAVESSANDO && carros[i].x >= 580) carros[i].estado = SAINDO;
-                    break;
-                }
-                case DIREITA:
-                {
-                    float limite = 590.0f;
-                    if (carros[i].estado != APROXIMANDO || sinalVerde) carros[i].x -= movimentoPermitido;
-                    else if (carros[i].x > limite)
-                    {
-                        carros[i].x -= movimentoPermitido;
-                        if (carros[i].x < limite) carros[i].x = limite;
-                    }
-                    else deveParar = true;
-
-                    if (carros[i].estado == APROXIMANDO && sinalVerde && carros[i].x <= limite) carros[i].estado = ATRAVESSANDO;
-                    if (carros[i].estado == ATRAVESSANDO && carros[i].x + 38 < 420) carros[i].estado = SAINDO;
-                    break;
-                }
-            }
-        }
-
-        carros[i].parado = deveParar || movimentoPermitido <= 0.0f;
-
-        if (estadoAnterior == ATRAVESSANDO && carros[i].estado == SAINDO)
-        {
-            *pontos += 10;
-        }
-
-        if ((carros[i].direcao == CIMA && carros[i].y > altura + 40) ||
-            (carros[i].direcao == BAIXO && carros[i].y < -40) ||
-            (carros[i].direcao == ESQUERDA && carros[i].x > largura + 40) ||
-            (carros[i].direcao == DIREITA && carros[i].x < -40))
-        {
-            for (int k = i; k < *quantidade - 1; k++)
-            {
-                carros[k] = carros[k + 1];
-            }
-            (*quantidade)--;
-            i--;
-        }
-    }
-}
-
-// --- VERIFICAÇÃO DE BATIDAS ENTRE CARROS ---
-bool verificarBatidas(Carro carros[], int quantidade)
-{
-    for (int i = 0; i < quantidade; i++)
-    {
-        for (int j = i + 1; j < quantidade; j++)
-        {
-            Rectangle rectA = (carros[i].direcao == CIMA || carros[i].direcao == BAIXO) ?
-                (Rectangle){ carros[i].x, carros[i].y, 26, 38 } :
-                (Rectangle){ carros[i].x, carros[i].y, 38, 26 };
-
-            Rectangle rectB = (carros[j].direcao == CIMA || carros[j].direcao == BAIXO) ?
-                (Rectangle){ carros[j].x, carros[j].y, 26, 38 } :
-                (Rectangle){ carros[j].x, carros[j].y, 38, 26 };
-
-            if (CheckCollisionRecs(rectA, rectB)) return true;
-        }
-    }
-    return false;
-}
-
-// VERIFICAÇÃO DE ATROPELAMENTO DE CICLISTAS
-bool verificarAtropelamento(Carro carros[], int qtdCarros, Ciclista ciclistas[], int qtdCiclistas)
-{
-    for (int i = 0; i < qtdCarros; i++)
-    {
-        Rectangle rectCarro = (carros[i].direcao == CIMA || carros[i].direcao == BAIXO) ?
-            (Rectangle){ carros[i].x, carros[i].y, 26, 38 } :
-            (Rectangle){ carros[i].x, carros[i].y, 38, 26 };
-
-        for (int j = 0; j < qtdCiclistas; j++)
-        {
-            // Caixa de colisão aproximada do ciclista
-            Rectangle rectCiclista = (Rectangle){ ciclistas[j].x - 8, ciclistas[j].y - 14, 16, 18 };
-
-            if (CheckCollisionRecs(rectCarro, rectCiclista))
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// VERIFICAÇÃO DE ATROPELAMENTO DE PEDESTRES
-bool verificarAtropelamentoPedestres(
-    Carro carros[],
-    int qtdCarros,
-    Pedestre pedestres[],
-    int qtdPedestres
-)
-{
-    for (int i = 0; i < qtdCarros; i++)
-    {
-        Rectangle rectCarro =
-            (carros[i].direcao == CIMA || carros[i].direcao == BAIXO) ?
-            (Rectangle){carros[i].x, carros[i].y, 26, 38} :
-            (Rectangle){carros[i].x, carros[i].y, 38, 26};
-
-        for (int j = 0; j < qtdPedestres; j++)
-        {
-            // Área de colisão do pedestre
-            Rectangle rectPedestre = {
-                pedestres[j].x - 6,
-                pedestres[j].y - 7,
-                12,
-                24
-            };
-
-            if (CheckCollisionRecs(rectCarro, rectPedestre))
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-// REINICIALIZAÇÃO
-void reiniciarJogo(
-    Carro carros[],
-    int *quantidade,
-    int *pontos,
-    float *tempoJogado,
-    float *barraCongestionamento,
-    bool *gameOver,
-    int *causaGameOver,
-    bool *fluxoVerticalVerde,
-    float *tempoUltimoSpawn
-)
-{
-    *quantidade = 0;
-    *pontos = 0;
-    *tempoJogado = 0.0f;
-    *barraCongestionamento = 0.0f;
-    *gameOver = false;
-*causaGameOver = 0; // 0 = Sem Game Over, 1 = Colapso, 2 = Colisão de Carros, 3 = Atropelamento de Ciclista, 4 = Atropelamento de Pedestre
-    *fluxoVerticalVerde = true;
-    *tempoUltimoSpawn = 0.0f;
-}
 
 int main(void)
 {
@@ -696,14 +177,16 @@ int main(void)
 
     Carro carros[MAX_CARROS];
     int quantidadeCarros = 0;
+
     Ciclista ciclistas[MAX_CICLISTAS];
     int quantidadeCiclistas = 0;
     int proximaDirecaoCiclista = DIREITA;
     float tempoUltimoCiclistaSpawn = 0.0f;
+
     Pedestre pedestres[MAX_PEDESTRES];
-int quantidadePedestres = 0;
-int proximaDirecaoPedestre = BAIXO;
-float tempoUltimoPedestreSpawn = 0.0f;
+    int quantidadePedestres = 0;
+    int proximaDirecaoPedestre = BAIXO;
+    float tempoUltimoPedestreSpawn = 0.0f;
 
     bool fluxoVerticalVerde = true;
     bool gameOver = false;
@@ -711,14 +194,25 @@ float tempoUltimoPedestreSpawn = 0.0f;
 
     int pontos = 0;
     int recorde = carregarRecorde();
+
     float tempoJogado = 0.0f;
     float barraCongestionamento = 0.0f;
     float tempoUltimoSpawn = 0.0f;
 
-    InitWindow(largura, altura, "Caos no Cruzamento - Modo Sobrevivência");
+    InitWindow(largura, altura, "Caos no Cruzamento - Modo Sobrevivencia");
     SetTargetFPS(60);
 
-    reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &causaGameOver, &fluxoVerticalVerde, &tempoUltimoSpawn);
+    reiniciarJogo(
+        carros,
+        &quantidadeCarros,
+        &pontos,
+        &tempoJogado,
+        &barraCongestionamento,
+        &gameOver,
+        &causaGameOver,
+        &fluxoVerticalVerde,
+        &tempoUltimoSpawn
+    );
 
     while (!WindowShouldClose())
     {
@@ -729,23 +223,47 @@ float tempoUltimoPedestreSpawn = 0.0f;
             tempoUltimoCiclistaSpawn += GetFrameTime();
             tempoUltimoPedestreSpawn += GetFrameTime();
 
-            // Dificuldade e Frequência de Spawn
+            //frequencia aparecer coisas
             float intervaloSpawn = 3.0f;
             float multiplicadorVelocidade = 1.0f;
 
-            if (tempoJogado >= 90.0f) { intervaloSpawn = 1.0f; multiplicadorVelocidade = 1.5f; }
-            else if (tempoJogado >= 60.0f) { intervaloSpawn = 1.5f; multiplicadorVelocidade = 1.3f; }
-            else if (tempoJogado >= 30.0f) { intervaloSpawn = 2.0f; multiplicadorVelocidade = 1.15f; }
+            if (tempoJogado >= 90.0f)
+            {
+                intervaloSpawn = 1.0f;
+                multiplicadorVelocidade = 1.5f;
+            }
+            else if (tempoJogado >= 60.0f)
+            {
+                intervaloSpawn = 1.5f;
+                multiplicadorVelocidade = 1.3f;
+            }
+            else if (tempoJogado >= 30.0f)
+            {
+                intervaloSpawn = 2.0f;
+                multiplicadorVelocidade = 1.15f;
+            }
 
-            // Reduzida a frequência de ciclistas (de 2.5s para 5.0s)
+            //gera ciclistas
             if (tempoUltimoCiclistaSpawn >= 5.0f)
             {
-                tentarGerarCiclista(ciclistas, &quantidadeCiclistas, largura, &proximaDirecaoCiclista);
+                tentarGerarCiclista(
+                    ciclistas,
+                    &quantidadeCiclistas,
+                    largura,
+                    &proximaDirecaoCiclista
+                );
+
                 tempoUltimoCiclistaSpawn = 0.0f;
             }
 
-            atualizarCiclistas(ciclistas, &quantidadeCiclistas, largura, multiplicadorVelocidade);
-            // Geração e movimentação dos pedestres
+            atualizarCiclistas(
+                ciclistas,
+                &quantidadeCiclistas,
+                largura,
+                multiplicadorVelocidade
+            );
+
+            //movimentacao pedestres
             if (tempoUltimoPedestreSpawn >= 3.5f)
             {
                 tentarGerarPedestre(
@@ -759,33 +277,63 @@ float tempoUltimoPedestreSpawn = 0.0f;
 
             atualizarPedestres(pedestres, &quantidadePedestres);
 
+            //gera carros
             if (tempoUltimoSpawn >= intervaloSpawn)
             {
-                tentarGerarCarro(carros, &quantidadeCarros, largura, altura);
+                tentarGerarCarro(
+                    carros,
+                    &quantidadeCarros,
+                    largura,
+                    altura
+                );
+
                 tempoUltimoSpawn = 0.0f;
             }
 
-            if (IsKeyPressed(KEY_SPACE)) fluxoVerticalVerde = !fluxoVerticalVerde;
+            if (IsKeyPressed(KEY_SPACE))
+            {
+                fluxoVerticalVerde = !fluxoVerticalVerde;
+            }
 
-            atualizarCarrosEFilas(carros, &quantidadeCarros, largura, altura, fluxoVerticalVerde, multiplicadorVelocidade, &pontos);
+            atualizarCarrosEFilas(
+                carros,
+                &quantidadeCarros,
+                largura,
+                altura,
+                fluxoVerticalVerde,
+                multiplicadorVelocidade,
+                &pontos
+            );
+
             atualizarMatrizComCarros(carros, quantidadeCarros);
 
-            // Cálculo da Barra de Congestionamento
+            //calculo da barra cong
             int carrosParados = 0;
-            for (int i = 0; i < quantidadeCarros; i++) if (carros[i].parado) carrosParados++;
+
+            for (int i = 0; i < quantidadeCarros; i++)
+            {
+                if (carros[i].parado)
+                {
+                    carrosParados++;
+                }
+            }
 
             if (carrosParados >= 3)
             {
-                barraCongestionamento += (carrosParados - 2) * 1.8f * GetFrameTime();
+                barraCongestionamento +=
+                    (carrosParados - 2) * 1.8f * GetFrameTime();
             }
             else
             {
                 barraCongestionamento -= 3.0f * GetFrameTime();
             }
 
-            if (barraCongestionamento < 0.0f) barraCongestionamento = 0.0f;
+            if (barraCongestionamento < 0.0f)
+            {
+                barraCongestionamento = 0.0f;
+            }
 
-            // Verificação de Condições de Game Over
+            //condicoes de game Over
             if (barraCongestionamento >= 100.0f)
             {
                 barraCongestionamento = 100.0f;
@@ -801,15 +349,28 @@ float tempoUltimoPedestreSpawn = 0.0f;
                 salvarRecorde(pontos);
                 recorde = carregarRecorde();
             }
-            else if (verificarAtropelamento(carros, quantidadeCarros, ciclistas, quantidadeCiclistas))
+            else if (
+                verificarAtropelamento(
+                    carros,
+                    quantidadeCarros,
+                    ciclistas,
+                    quantidadeCiclistas
+                )
+            )
             {
                 gameOver = true;
                 causaGameOver = 3;
                 salvarRecorde(pontos);
                 recorde = carregarRecorde();
             }
-            else if (verificarAtropelamentoPedestres(carros, quantidadeCarros, pedestres, quantidadePedestres
-            ))
+            else if (
+                verificarAtropelamentoPedestres(
+                    carros,
+                    quantidadeCarros,
+                    pedestres,
+                    quantidadePedestres
+                )
+            )
             {
                 gameOver = true;
                 causaGameOver = 4;
@@ -821,11 +382,24 @@ float tempoUltimoPedestreSpawn = 0.0f;
         {
             if (IsKeyPressed(KEY_R))
             {
-                reiniciarJogo(carros, &quantidadeCarros, &pontos, &tempoJogado, &barraCongestionamento, &gameOver, &causaGameOver, &fluxoVerticalVerde, &tempoUltimoSpawn);
+                reiniciarJogo(
+                    carros,
+                    &quantidadeCarros,
+                    &pontos,
+                    &tempoJogado,
+                    &barraCongestionamento,
+                    &gameOver,
+                    &causaGameOver,
+                    &fluxoVerticalVerde,
+                    &tempoUltimoSpawn
+                );
+
                 quantidadeCiclistas = 0;
                 quantidadePedestres = 0;
+
                 proximaDirecaoPedestre = BAIXO;
                 tempoUltimoPedestreSpawn = 0.0f;
+
                 proximaDirecaoCiclista = DIREITA;
                 tempoUltimoCiclistaSpawn = 0.0f;
             }
@@ -835,48 +409,11 @@ float tempoUltimoPedestreSpawn = 0.0f;
 
         ClearBackground((Color){65, 135, 75, 255});
 
-        // Desenhar Ruas
-        DrawRectangle(0, 270, largura, 160, DARKGRAY);
-        DrawRectangle(420, 0, 160, altura, DARKGRAY);
+        desenharMapa(fluxoVerticalVerde, largura, altura);
 
-        // Ciclovia e Marcas
-        DrawRectangle(0, 270, 420, 20, RED);
-        DrawRectangle(580, 270, 420, 20, RED);
-        for (int x = 0; x < 420; x += 30) DrawRectangle(x, 279, 15, 2, RAYWHITE);
-        for (int x = 580; x < largura; x += 30) DrawRectangle(x, 279, 15, 2, RAYWHITE);
-
-        // Faixas Centrais
-        for (int x = 0; x < largura; x += 60) DrawRectangle(x, 347, 30, 6, YELLOW);
-        for (int y = 0; y < altura; y += 60) DrawRectangle(497, y, 6, 30, YELLOW);
-
-        // Faixas de Pedestres
-        for (int i = 0; i < 6; i++)
-        {
-            DrawRectangle(435 + i * 22, 274, 12, 12, RAYWHITE);
-            DrawRectangle(435 + i * 22, 438, 12, 12, RAYWHITE);
-            DrawRectangle(400, 295 + i * 22, 12, 12, RAYWHITE);
-            DrawRectangle(588, 295 + i * 22, 12, 12, RAYWHITE);
-        }
-
-// semaforo
-DrawText("SEMAFORO HORIZONTAL", 335, 155, 16, RAYWHITE);
-
-DrawRectangle(390, 190, 30, 55, BLACK);
-
-if (fluxoVerticalVerde)
-{
-    DrawCircle(405, 205, 8, GREEN);
-    DrawCircle(405, 230, 8, RED);
-}
-else
-{
-    DrawCircle(405, 205, 8, RED);
-    DrawCircle(405, 230, 8, GREEN);
-}
-
-desenharCiclistas(ciclistas, quantidadeCiclistas);
-desenharPedestres(pedestres, quantidadePedestres);
-desenharCarros(carros, quantidadeCarros);
+        desenharCiclistas(ciclistas, quantidadeCiclistas);
+        desenharPedestres(pedestres, quantidadePedestres);
+        desenharCarros(carros, quantidadeCarros);
 
         DrawText("CAOS NO CRUZAMENTO", 20, 20, 28, RAYWHITE);
         DrawText("ESPACO: Alterna fluxo", 20, 55, 16, RAYWHITE);
@@ -885,43 +422,102 @@ desenharCarros(carros, quantidadeCarros);
         DrawText(TextFormat("Recorde: %d", recorde), 20, 110, 18, GOLD);
         DrawText(TextFormat("Tempo: %.0fs", tempoJogado), 20, 132, 18, RAYWHITE);
 
-        // Desenhar Barra de Congestionamento
         DrawText("Congestionamento:", 730, 20, 18, RAYWHITE);
         DrawRectangle(730, 45, 240, 20, DARKGRAY);
 
         Color corBarra = GREEN;
-        if (barraCongestionamento > 60.0f) corBarra = RED;
-        else if (barraCongestionamento > 30.0f) corBarra = ORANGE;
 
-        DrawRectangle(730, 45, (int)(2.4f * barraCongestionamento), 20, corBarra);
+        if (barraCongestionamento > 60.0f)
+        {
+            corBarra = RED;
+        }
+        else if (barraCongestionamento > 30.0f)
+        {
+            corBarra = ORANGE;
+        }
+
+        DrawRectangle(
+            730,
+            45,
+            (int)(2.4f * barraCongestionamento),
+            20,
+            corBarra
+        );
+
         DrawRectangleLines(730, 45, 240, 20, RAYWHITE);
-        DrawText(TextFormat("%.0f%%", barraCongestionamento), 830, 47, 16, BLACK);
 
-        // --- TELA DE GAME OVER ---
+        DrawText(
+            TextFormat("%.0f%%", barraCongestionamento),
+            830,
+            47,
+            16,
+            BLACK
+        );
+
+
         if (gameOver)
         {
             DrawRectangle(0, 0, largura, altura, Fade(BLACK, 0.8f));
 
             if (causaGameOver == 1)
             {
-                DrawText("CONGESTIONAMENTO TOTAL!", largura/2 - MeasureText("CONGESTIONAMENTO TOTAL!", 34)/2, 260, 34, RED);
-                DrawText("A cidade entrou em colapso!", largura/2 - MeasureText("A cidade entrou em colapso!", 20)/2, 305, 20, RAYWHITE);
+                DrawText(
+                    "CONGESTIONAMENTO TOTAL!",
+                    largura / 2 - MeasureText("CONGESTIONAMENTO TOTAL!", 34) / 2,
+                    260,
+                    34,
+                    RED
+                );
+
+                DrawText(
+                    "A cidade entrou em colapso!",
+                    largura / 2 - MeasureText("A cidade entrou em colapso!", 20) / 2,
+                    305,
+                    20,
+                    RAYWHITE
+                );
             }
             else if (causaGameOver == 2)
             {
-                DrawText("ACIDENTE NO CRUZAMENTO!", largura/2 - MeasureText("ACIDENTE NO CRUZAMENTO!", 34)/2, 260, 34, RED);
-                DrawText("Dois carros colidiram!", largura/2 - MeasureText("Dois carros colidiram!", 20)/2, 305, 20, RAYWHITE);
+                DrawText(
+                    "ACIDENTE NO CRUZAMENTO!",
+                    largura / 2 - MeasureText("ACIDENTE NO CRUZAMENTO!", 34) / 2,
+                    260,
+                    34,
+                    RED
+                );
+
+                DrawText(
+                    "Dois carros colidiram!",
+                    largura / 2 - MeasureText("Dois carros colidiram!", 20) / 2,
+                    305,
+                    20,
+                    RAYWHITE
+                );
             }
             else if (causaGameOver == 3)
             {
-                DrawText("ATROPELAMENTO NA CICLOVIA!", largura/2 - MeasureText("ATROPELAMENTO NA CICLOVIA!", 34)/2, 260, 34, RED);
-                DrawText("Um carro atingiu um ciclista!", largura/2 - MeasureText("Um carro atingiu um ciclista!", 20)/2, 305, 20, RAYWHITE);
+                DrawText(
+                    "ATROPELAMENTO NA CICLOVIA!",
+                    largura / 2 - MeasureText("ATROPELAMENTO NA CICLOVIA!", 34) / 2,
+                    260,
+                    34,
+                    RED
+                );
+
+                DrawText(
+                    "Um carro atingiu um ciclista!",
+                    largura / 2 - MeasureText("Um carro atingiu um ciclista!", 20) / 2,
+                    305,
+                    20,
+                    RAYWHITE
+                );
             }
             else if (causaGameOver == 4)
             {
                 DrawText(
                     "ATROPELAMENTO DE PEDESTRE!",
-                    largura/2 - MeasureText("ATROPELAMENTO DE PEDESTRE!", 34)/2,
+                    largura / 2 - MeasureText("ATROPELAMENTO DE PEDESTRE!", 34) / 2,
                     260,
                     34,
                     RED
@@ -929,21 +525,48 @@ desenharCarros(carros, quantidadeCarros);
 
                 DrawText(
                     "Um carro atingiu um pedestre!",
-                    largura/2 - MeasureText("Um carro atingiu um pedestre!", 20)/2,
+                    largura / 2 - MeasureText("Um carro atingiu um pedestre!", 20) / 2,
                     305,
                     20,
                     RAYWHITE
                 );
             }
 
-            DrawText(TextFormat("Pontuacao Final: %d", pontos), largura/2 - MeasureText(TextFormat("Pontuacao Final: %d", pontos), 22)/2, 350, 22, YELLOW);
-            DrawText(TextFormat("Melhor Recorde: %d", recorde), largura/2 - MeasureText(TextFormat("Melhor Recorde: %d", recorde), 20)/2, 380, 20, GOLD);
-            DrawText("Pressione 'R' para reiniciar", largura/2 - MeasureText("Pressione 'R' para reiniciar", 20)/2, 430, 20, LIGHTGRAY);
+            DrawText(
+                TextFormat("Pontuacao Final: %d", pontos),
+                largura / 2 - MeasureText(
+                    TextFormat("Pontuacao Final: %d", pontos),
+                    22
+                ) / 2,
+                350,
+                22,
+                YELLOW
+            );
+
+            DrawText(
+                TextFormat("Melhor Recorde: %d", recorde),
+                largura / 2 - MeasureText(
+                    TextFormat("Melhor Recorde: %d", recorde),
+                    20
+                ) / 2,
+                380,
+                20,
+                GOLD
+            );
+
+            DrawText(
+                "Pressione 'R' para reiniciar",
+                largura / 2 - MeasureText("Pressione 'R' para reiniciar", 20) / 2,
+                430,
+                20,
+                LIGHTGRAY
+            );
         }
 
         EndDrawing();
     }
 
     CloseWindow();
+
     return 0;
 }
