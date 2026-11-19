@@ -199,7 +199,7 @@ int main(void)
     float barraCongestionamento = 0.0f;
     float tempoUltimoSpawn = 0.0f;
 
-    InitWindow(largura, altura, "Caos no Cruzamento - Modo Sobrevivencia");
+    InitWindow(largura, altura, "Caos no Cruzamento");
     SetTargetFPS(60);
 
     reiniciarJogo(
