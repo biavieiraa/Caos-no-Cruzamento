@@ -108,6 +108,43 @@ void reiniciarJogo(
 
 //recordes
 
+typedef struct Placar {
+    int pontos;
+    struct Placar *proximo;
+} Placar;
+
+Placar *inserirOrdenado(Placar *lista, int pontos)
+{
+    Placar *novo = malloc(sizeof(Placar));
+    if (novo == NULL) return lista;
+    novo->pontos = pontos;
+
+    if (lista == NULL || pontos > lista->pontos)
+    {
+        novo->proximo = lista;
+        return novo;
+    }
+
+    Placar *atual = lista;
+    while (atual->proximo != NULL && atual->proximo->pontos >= pontos)
+    {
+        atual = atual->proximo;
+    }
+    novo->proximo = atual->proximo;
+    atual->proximo = novo;
+    return lista;
+}
+
+void liberarPlacar(Placar *lista)
+{
+    while (lista != NULL)
+    {
+        Placar *proximo = lista->proximo;
+        free(lista);
+        lista = proximo;
+    }
+}
+
 int carregarRecorde(void)
 {
     FILE *f = fopen("recorde.txt", "r");
@@ -124,18 +161,36 @@ int carregarRecorde(void)
 
 void salvarRecorde(int pontos)
 {
-    int recAtual = carregarRecorde();
+    if (pontos <= 0) return;
 
-    if (pontos > recAtual)
+    Placar *lista = NULL;
+
+    FILE *f = fopen("recorde.txt", "r");
+    if (f)
     {
-        FILE *f = fopen("recorde.txt", "w");
-
-        if (f)
+        int valor;
+        while (fscanf(f, "%d", &valor) == 1)
         {
-            fprintf(f, "%d", pontos);
-            fclose(f);
+            lista = inserirOrdenado(lista, valor);
         }
+        fclose(f);
     }
+
+    lista = inserirOrdenado(lista, pontos);
+
+    f = fopen("recorde.txt", "w");
+    if (f)
+    {
+        Placar *atual = lista;
+        for (int i = 0; i < 5 && atual != NULL; i++)
+        {
+            fprintf(f, "%d\n", atual->pontos);
+            atual = atual->proximo;
+        }
+        fclose(f);
+    }
+
+    liberarPlacar(lista);
 }
 
 
